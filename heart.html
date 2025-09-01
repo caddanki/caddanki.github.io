@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Heartbeat Animation — 87 BPM</title>
+  <style>
+    :root {
+      --bpm: 87;
+      --beat-duration: calc(60s / var(--bpm));
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #000;
+      margin: 0;
+    }
+
+    .heart {
+      width: 120px;
+      height: 120px;
+      background-color: #B22222; /* Brighter deep red */
+      position: relative;
+      transform: rotate(-45deg);
+      animation: heartbeat calc(var(--beat-duration) * 4) infinite;
+    }
+
+    .heart::before,
+    .heart::after {
+      content: "";
+      width: 120px;
+      height: 120px;
+      background-color: #B22222; /* Brighter deep red */
+      border-radius: 50%;
+      position: absolute;
+    }
+
+    .heart::before {
+      top: -60px;
+      left: 0;
+    }
+
+    .heart::after {
+      left: 60px;
+      top: 0;
+    }
+
+    @keyframes heartbeat {
+      0%, 12.5% { transform: rotate(-45deg) scale(1); }
+      2% { transform: rotate(-45deg) scale(1.3); }
+      25% { transform: rotate(-45deg) scale(1); }
+      
+      37.5% { transform: rotate(-45deg) scale(1.0); }
+      39.5% { transform: rotate(-45deg) scale(1.3); }
+      50% { transform: rotate(-45deg) scale(1.0); }
+      52.5% { transform: rotate(-45deg) scale(1.3); }
+
+      62.5% { transform: rotate(-45deg) scale(1); }
+      64.5% { transform: rotate(-45deg) scale(1); }
+      75% { transform: rotate(-45deg) scale(1); }
+
+      100% { transform: rotate(-45deg) scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <div class="heart"></div>
+</body>
+</html>
