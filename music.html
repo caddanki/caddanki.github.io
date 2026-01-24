@@ -186,16 +186,15 @@ select:focus, input[type="number"]:focus {
 
 .progression-display {
     display: flex;
-    gap: 20px;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 15px;
 }
 
 .progression-display.hidden {
     display: none !important;
 }
 
+/*
 .chord-box {
     flex: 1;
     max-width: 350px;
@@ -230,7 +229,7 @@ select:focus, input[type="number"]:focus {
     background: #ffc107;
     color: #000;
 }
-
+*/
 
 .chords-section h2 {
     color: #667eea;
@@ -313,6 +312,142 @@ select:focus, input[type="number"]:focus {
     padding: 20px;
     background: #f8f9fa;
     border-radius: 10px;
+}
+
+.beat-grid-container {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-behavior: smooth;
+}
+
+.beat-grid-wrapper {
+    display: inline-block;
+    min-width: 100%;
+}
+
+.beat-grid {
+    display: inline-grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 60px;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.beat-box {
+    aspect-ratio: 1;
+    border: 3px solid #dee2e6;
+    border-radius: 8px;
+    background: white;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.beat-box.bar-start {
+    border-left: 5px solid #667eea;
+}
+
+.beat-box.active {
+    background: #667eea;
+    border-color: #667eea;
+    transform: scale(1.1);
+    box-shadow: 0 4px 10px rgba(102, 126, 234, 0.4);
+}
+
+.beat-box.played {
+    background: #e9ecef;
+    border-color: #adb5bd;
+}
+
+.beat-box .beat-number {
+    position: absolute;
+    top: 2px;
+    left: 4px;
+    font-size: 10px;
+    color: #6c757d;
+    font-weight: 600;
+}
+
+.beat-box.active .beat-number {
+    color: white;
+}
+
+
+.chord-labels {
+    display: inline-grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 60px;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.cue-labels {
+    display: inline-grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 60px;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.cue-label-box {
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+    background: #51cf66;
+    padding: 8px 4px;
+    border-radius: 6px;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cue-label-box.empty {
+    background: transparent;
+}
+
+.cue-label-box.passed {
+    background: #95d5a7;
+    opacity: 0.5;
+}
+
+.chord-label {
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    color: #000;
+    background: #ffc107;
+    padding: 8px 4px;
+    border-radius: 6px;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chord-label.empty {
+    background: transparent;
+}
+
+.current-chord-small {
+    text-align: center;
+    padding: 10px;
+    background: #e9ecef;
+    border-radius: 8px;
+    font-size: 16px;
+}
+
+.current-chord-small .label-small {
+    color: #666;
+    margin-right: 10px;
+    font-weight: 600;
+}
+
+.current-chord-small #currentChordSmall {
+    font-size: 24px;
+    font-weight: bold;
+    color: #495057;
 }
 
 .chords-section {
@@ -433,8 +568,8 @@ select:focus, input[type="number"]:focus {
         transform: scale(1.1);
     }
 }
-
-.chord-box.next .chord-value.flash {
+//.chord-box.next 
+.chord-value.flash {
     animation: nextChordFlash 0.4s ease;
 }
     </style>
@@ -528,19 +663,21 @@ select:focus, input[type="number"]:focus {
             <div class="countdown" id="cueCountdown"></div>
         </div>
 
-        <div class="progression-container">
-            <div id="progressionDisplay" class="progression-display hidden">
-                <div class="chord-box current">
-                    <div class="label">Currently Playing</div>
-                    <div class="chord-value" id="currentChordDisplay2">--</div>
-                </div>
-                <div class="chord-box next">
-                    <div class="label">Next Chord to Play</div>
-                    <div class="chord-value" id="nextChordDisplay">--</div>
-                </div>
-            </div>
-        </div>
-
+		<div class="progression-container">
+			<div id="progressionDisplay" class="progression-display hidden">
+				<div class="beat-grid-container" id="beatGridContainer">
+					<div class="beat-grid-wrapper">
+						<div class="beat-grid" id="beatGrid"></div>
+						<div class="chord-labels" id="chordLabels"></div>
+						<div class="cue-labels" id="cueLabels"></div>
+					</div>
+				</div>
+				<div class="current-chord-small">
+					<span class="label-small">Currently Playing:</span>
+					<span id="currentChordSmall">--</span>
+				</div>
+			</div>
+		</div>
         <div class="chords-section">
             <h2>Chords</h2>
             <div class="chord-buttons"></div>
@@ -578,38 +715,106 @@ const songs = {
 		chords: ['E', 'B', 'G#m', 'C#m', 'A', 'F#m'], 
         progression: [
             // Intro pattern
-            'E', 'B', 'E', 'B', 'E', 'B',
-            'C#m', 'A',
-            'E', 'B', 'E', 'B', 'E', 'B',
-            'C#m', 'A',
+			{ chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'C#m', beat: 1 },
+			{ chord: 'A', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'C#m', beat: 1 },
+			{ chord: 'A', beat: 1 },
             
             // Cue for singing
-            { cue: 'Start Singing', countdown: true },
+            { cue: 'Start Singing', beat: 1 },
             
             // Verse pattern
-            'E', 'B', 'E', 'B', 'E', 'B',
-            'C#m', 'A',
-            'E', 'B', 'E', 'B', 'E', 'B',
-            'C#m', 'A',
-            'E', 'B', 'E', 'B', 'E', 'B',
-            'C#m', 'A',
-            'E', 'B', 'E', 'B', 'E', 'B',
-            'C#m', 'A',
-            'E', 'E', 'C#m', 'C#m',
-            'F#m', 'B', 'E', 'E',
-            'G#m', 'C#m', 'B', 'B',
-            
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'C#m', beat: 1 },
+			{ chord: 'A', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'C#m', beat: 1 },
+			{ chord: 'A', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'C#m', beat: 1 },
+			{ chord: 'A', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'C#m', beat: 1 },
+			{ chord: 'A', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'E', beat: 1 },
+			{ chord: 'C#m', beat: 1 },
+			{ chord: 'C#m', beat: 1 },
+			{ chord: 'F#m', beat: 1 },
+			{ chord: 'B', beat: 1 },
+			{ chord: 'E', beat: 1 },
+			{ chord: 'E', beat: 1 },
+			{ chord: 'G#m', beat: 1 },
+			{ chord: 'C#m', beat: 1 },
+			{ chord: 'B', beat: 1 },
+			{ chord: 'B', beat: 1 },
+			
             // Cue for chorus
-            { cue: 'Sing Chorus', countdown: true },
-            
-            // Chorus
-            'E', 'E', 'G#m', 'G#m',
-            'C#m', 'C#m', 'B', 'B',
-            'E', 'E', 'G#m', 'G#m',
-            'E', 'G#m', 'A', 'F#m',
-            'B', 'G#m', 'E', 'B',
-            'C#m', 'G#m', 'A', 'F#m',
-            'A', 'F#m', 'B', 'B'
+            { cue: 'Sing Chorus', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'E', beat: 1 },
+			{ chord: 'G#m', beat: 1 },
+			{ chord: 'G#m', beat: 1 },
+			{ chord: 'C#m', beat: 1 },
+			{ chord: 'C#m', beat: 1 },
+			{ chord: 'B', beat: 1 },
+			{ chord: 'B', beat: 1 },
+			{ chord: 'E', beat: 1 },
+			{ chord: 'E', beat: 1 },
+			{ chord: 'G#m', beat: 1 },
+			{ chord: 'G#m', beat: 1 },
+			{ chord: 'E', beat: 1 },
+			{ chord: 'G#m', beat: 1 },
+			{ chord: 'A', beat: 1 },
+			{ chord: 'F#m', beat: 1 },
+			
+			{ chord: 'B', beat: 1 },
+			{ chord: 'G#m', beat: 1 },
+			{ chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+			
+			{ chord: 'C#m', beat: 1 },
+			{ chord: 'G#m', beat: 1 },
+			{ chord: 'A', beat: 1 },
+			{ chord: 'F#m', beat: 1 },
+			
+			{ chord: 'A', beat: 1 },
+			{ chord: 'F#m', beat: 1 },
+			{ chord: 'B', beat: 1 },
+			{ chord: 'B', beat: 1 }
+			
         ]
     },
 	ChinniChinni: {
@@ -619,36 +824,22 @@ const songs = {
 		chords: ['Eb', 'Bb', 'Db', 'Ab', 'Fm', 'Bbm', 'Fm', 'Fm7'], 
         progression: [
             // Intro pattern
-            'Eb', 'Eb', 'Eb', 'Ab', 'Eb', 'Ab', 'Eb', 'Db', 
-            'Eb', 'Bb',
-            
-            // Cue for singing
-            { cue: 'Start Singing', countdown: true },
-            
-            // Verse pattern
-             
-			'C#m', 'A',
-            'E', 'B', 'E', 'B', 'E', 'B',
-            'C#m', 'A',
-            'E', 'B', 'E', 'B', 'E', 'B',
-            'C#m', 'A',
-            'E', 'B', 'E', 'B', 'E', 'B',
-            'C#m', 'A',
-            'E', 'E', 'C#m', 'C#m',
-            'F#m', 'B', 'E', 'E',
-            'G#m', 'C#m', 'B', 'B',
-            
-            // Cue for chorus
-            { cue: 'Sing Chorus', countdown: true },
-            
-            // Chorus
-            'E', 'E', 'G#m', 'G#m',
-            'C#m', 'C#m', 'B', 'B',
-            'E', 'E', 'G#m', 'G#m',
-            'E', 'G#m', 'A', 'F#m',
-            'B', 'G#m', 'E', 'B',
-            'C#m', 'G#m', 'A', 'F#m',
-            'A', 'F#m', 'B', 'B'
+            { chord: 'Eb', beat: 1 },
+            { chord: 'Eb', beat: 1 },
+            { chord: 'Eb', beat: 1 },
+            { chord: 'Ab', beat: 1 },
+            { chord: 'Ab', beat: 1 },
+            { chord: 'Eb', beat: 1 },
+            { chord: 'Eb', beat: 1 },
+            { chord: 'Ab', beat: 1 },
+            { chord: 'Ab', beat: 1 },
+            { chord: 'Eb', beat: 1 },
+            { chord: 'Eb', beat: 1 },
+			{ chord: 'Db', beat: 2 },
+			{ chord: 'Db', beat: 1 },
+			{ chord: 'Eb', beat: 1 },
+			{ cue: 'Start Singing', beat: 2 },
+			
         ]
     }
 };
@@ -670,6 +861,7 @@ let barStartTime = null;
 let nextBeatTime = null;
 let isScheduling = false;
 let beatsPlayedInBar = 0;
+let chordStartBeatIndex = -1;
 let sustainedChord = null;
 let sustainInterval = null;
 let currentSong = null;
@@ -828,9 +1020,189 @@ function updateMetronome(beatIndex) {
 }
 
 // Update current chord display
+// Update current chord display
 function updateChordDisplay(chordName) {
-    document.getElementById('currentChordDisplay2').textContent = chordName || '--';
+    document.getElementById('currentChordSmall').textContent = chordName || '--';
 }
+
+// Calculate total beats to display (entire song + 2 count-in bars)
+function getTotalBeatsToDisplay() {
+    if (!currentSong || !songMode) return 12; // Default 3 bars
+    
+    const beatsPerBar = getBeatsPerBar();
+    let totalBars = 2; // Start with 2 count-in bars
+    
+    currentSong.progression.forEach(item => {
+        if (typeof item === 'object' && (item.chord || item.cue)) {
+            totalBars++;
+        }
+    });
+    
+    return totalBars * beatsPerBar;
+}
+
+// Get beats per bar
+function getBeatsPerBar() {
+    const timeSignature = document.getElementById('timeSignature').value;
+    return parseInt(timeSignature.split('/')[0]);
+}
+
+function createBeatGrid() {
+    const totalBeats = getTotalBeatsToDisplay();
+    const beatsPerBar = getBeatsPerBar();
+    const beatGrid = document.getElementById('beatGrid');
+    const chordLabels = document.getElementById('chordLabels');
+    const cueLabels = document.getElementById('cueLabels');
+    
+    beatGrid.innerHTML = '';
+    chordLabels.innerHTML = '';
+    cueLabels.innerHTML = '';
+    
+    for (let i = 0; i < totalBeats; i++) {
+        // Create beat box
+        const beatBox = document.createElement('div');
+        beatBox.className = 'beat-box';
+        beatBox.id = `beat-box-${i}`;
+        
+        // Mark bar starts
+        if (i % beatsPerBar === 0) {
+            beatBox.classList.add('bar-start');
+        }
+        
+        // Add beat number
+        const beatNumber = document.createElement('div');
+        beatNumber.className = 'beat-number';
+        beatNumber.textContent = (i % beatsPerBar) + 1;
+        beatBox.appendChild(beatNumber);
+        
+        beatGrid.appendChild(beatBox);
+        
+        // Create chord label placeholder
+        const chordLabel = document.createElement('div');
+        chordLabel.className = 'chord-label empty';
+        chordLabel.id = `chord-label-${i}`;
+        
+        // Mark count-in bars (first 2 bars)
+        if (i < beatsPerBar * 2) {
+            chordLabel.textContent = 'COUNT';
+            chordLabel.className = 'chord-label count-in-label';
+            chordLabel.style.background = '#95d5a7';
+            chordLabel.style.fontSize = '12px';
+        }
+        
+        chordLabels.appendChild(chordLabel);
+        
+        // Create cue label placeholder
+        const cueLabel = document.createElement('div');
+        cueLabel.className = 'cue-label-box empty';
+        cueLabel.id = `cue-label-${i}`;
+        cueLabels.appendChild(cueLabel);
+    }
+}
+
+function updateBeatGrid() {
+    if (!currentSong || !songMode) return;
+    
+    const totalBeats = getTotalBeatsToDisplay();
+    const beatsPerBar = getBeatsPerBar();
+    const countInBeats = beatsPerBar * 2; // 2 bars of count-in
+    
+    // Clear all labels (except count-in labels)
+    for (let i = countInBeats; i < totalBeats; i++) {
+        const chordLabel = document.getElementById(`chord-label-${i}`);
+        const cueLabel = document.getElementById(`cue-label-${i}`);
+        if (chordLabel) {
+            chordLabel.textContent = '';
+            chordLabel.className = 'chord-label empty';
+        }
+        if (cueLabel) {
+            cueLabel.textContent = '';
+            cueLabel.className = 'cue-label-box empty';
+        }
+    }
+    
+    // Place all items starting after count-in bars
+    let currentBeatPosition = countInBeats;
+    
+    for (let i = 0; i < currentSong.progression.length; i++) {
+        const item = currentSong.progression[i];
+        
+        // Handle cues
+        if (typeof item === 'object' && item.cue) {
+            const beatIndex = currentBeatPosition + (item.beat - 1);
+            
+            if (beatIndex < totalBeats) {
+                const cueLabel = document.getElementById(`cue-label-${beatIndex}`);
+                if (cueLabel) {
+                    cueLabel.textContent = item.cue.charAt(0);
+                    cueLabel.className = 'cue-label-box';
+                    cueLabel.title = item.cue;
+                }
+            }
+            
+            currentBeatPosition += beatsPerBar;
+            continue;
+        }
+        
+        if (typeof item === 'object' && item.chord && item.beat) {
+            const beatIndex = currentBeatPosition + (item.beat - 1);
+            
+            if (beatIndex < totalBeats) {
+                const label = document.getElementById(`chord-label-${beatIndex}`);
+                if (label) {
+                    label.textContent = item.chord;
+                    label.className = 'chord-label';
+                }
+            }
+            
+            currentBeatPosition += beatsPerBar;
+        }
+    }
+}
+
+
+function highlightBeatInGrid(beatNumber) {
+    const totalBeats = getTotalBeatsToDisplay();
+    const beatsPerBar = getBeatsPerBar();
+    
+    // Calculate absolute beat position based on current beat index from metronome
+    const absoluteBeatIndex = currentBeatIndex;
+    
+    // Clear all active states
+    for (let i = 0; i < totalBeats; i++) {
+        const box = document.getElementById(`beat-box-${i}`);
+        if (box) {
+            box.classList.remove('active');
+        }
+        
+        // Mark cues as passed
+        if (i < absoluteBeatIndex) {
+            const cueLabel = document.getElementById(`cue-label-${i}`);
+            if (cueLabel && !cueLabel.classList.contains('empty')) {
+                cueLabel.classList.add('passed');
+            }
+        }
+    }
+    
+    // Highlight current beat
+    const currentBox = document.getElementById(`beat-box-${absoluteBeatIndex}`);
+    if (currentBox) {
+        currentBox.classList.add('active');
+        
+        // Auto-scroll: keep current beat in view, start scrolling after first bar
+        const container = document.getElementById('beatGridContainer');
+        const boxWidth = 68; // 60px width + 8px gap
+        const containerWidth = container.clientWidth;
+        const beatsVisible = Math.floor(containerWidth / boxWidth);
+        
+        // Start scrolling when we're past the first bar
+        if (absoluteBeatIndex >= beatsPerBar) {
+            const scrollPosition = (absoluteBeatIndex - beatsPerBar + 1) * boxWidth;
+            container.scrollLeft = scrollPosition;
+        }
+    }
+}
+
 
 // Show count-in display
 function showCountIn(count) {
@@ -891,33 +1263,24 @@ function updateCueCountdown() {
 }
 
 // Display chord progression
+// Display chord progression
 function displayProgression() {
     if (!currentSong) return;
     
     const display = document.getElementById('progressionDisplay');
-    const nextChordEl = document.getElementById('nextChordDisplay');
     
     if (progressionIndex >= currentSong.progression.length) {
-        nextChordEl.textContent = 'Complete! 🎉';
+        document.getElementById('currentChordSmall').textContent = 'Complete! 🎉';
         return;
     }
     
-    const nextItem = currentSong.progression[progressionIndex];
-    
-    if (typeof nextItem === 'object' && nextItem.cue) {
-        if (progressionIndex + 1 < currentSong.progression.length) {
-            const chordAfterCue = currentSong.progression[progressionIndex + 1];
-            if (typeof chordAfterCue === 'string') {
-                nextChordEl.textContent = chordAfterCue;
-            }
-        }
-    } else {
-        nextChordEl.textContent = nextItem;
-    }
+    createBeatGrid();
+    updateBeatGrid();
     
     display.classList.remove('hidden');
 }
 
+// Load song
 // Load song
 function loadSong(songKey) {
     if (!songKey) {
@@ -925,8 +1288,7 @@ function loadSong(songKey) {
         songMode = false;
         progressionIndex = 0;
         document.getElementById('progressionDisplay').classList.add('hidden');
-		
-		// Reset to default chords
+        // Reset to default chords
         displayChordButtons(['E', 'B', 'G#m', 'C#m', 'A', 'F#m']);
         return;
     }
@@ -938,11 +1300,12 @@ function loadSong(songKey) {
     document.getElementById('bpm').value = currentSong.bpm;
     document.getElementById('timeSignature').value = currentSong.timeSignature;
     
-	// Display chord buttons for this song
-	displayChordButtons(currentSong.chords);
-	 
+    // Display chord buttons for this song
+    displayChordButtons(currentSong.chords);
+    
     displayProgression();
 }
+
 // Display chord buttons based on song
 function displayChordButtons(chordList) {
     const buttonContainer = document.querySelector('.chord-buttons');
@@ -997,7 +1360,7 @@ function checkAndShowCue() {
     const item = currentSong.progression[progressionIndex];
     
     if (typeof item === 'object' && item.cue) {
-        showSongCue(item.cue, item.countdown);
+        // Just advance past the cue, no overlay needed
         progressionIndex++;
         displayProgression();
     }
@@ -1008,11 +1371,6 @@ function checkAndShowCue() {
 function advanceProgression() {
     if (!songMode || !currentSong) return;
     
-    // Flash the next chord display before advancing
-    const nextChordEl = document.getElementById('nextChordDisplay');
-    nextChordEl.classList.add('flash');
-    setTimeout(() => nextChordEl.classList.remove('flash'), 400);
-    
     progressionIndex++;
     
     if (progressionIndex >= currentSong.progression.length) {
@@ -1021,8 +1379,9 @@ function advanceProgression() {
     }
     
     checkAndShowCue();
-    displayProgression();
+    updateBeatGrid(); // Update the grid with new upcoming chords
 }
+
 // Check song chord
 function checkSongChord(chordName) {
     if (!songMode || !currentSong) return true;
@@ -1035,7 +1394,10 @@ function checkSongChord(chordName) {
         return false;
     }
     
-    if (chordName === expectedItem) {
+    // Handle new structure with beat information
+    const expectedChord = typeof expectedItem === 'object' ? expectedItem.chord : expectedItem;
+    
+    if (chordName === expectedChord) {
         advanceProgression();
         return true;
     }
@@ -1043,6 +1405,8 @@ function checkSongChord(chordName) {
     advanceProgression();
     return false;
 }
+
+
 // Handle chord sustain (hold to play)
 function startSustain(chordName) {
     const sustainMode = document.getElementById('sustainMode').checked;
@@ -1170,9 +1534,15 @@ function scheduleMetronome() {
         const beatIndex = currentBeatIndex;
         const beatTime = nextBeatTime;
         
+        // Calculate which beat within the bar for the checkbox highlighting
+        const beatInBar = currentBeatIndex % division;
+        
         const visualOffset = 0.05;
         Tone.Draw.schedule(() => {
-            updateMetronome(beatIndex);
+            updateMetronome(beatInBar);  // Use beatInBar for checkbox highlighting
+            
+            // Highlight beat in grid using absolute position
+            highlightBeatInGrid(beatIndex);
             
             const currentQuarterBeat = Math.floor((beatIndex * noteDuration) / quarterNoteDuration);
             const prevQuarterBeat = beatIndex === 0 ? -1 : Math.floor(((beatIndex - 1) * noteDuration) / quarterNoteDuration);
@@ -1183,46 +1553,71 @@ function scheduleMetronome() {
         }, beatTime - visualOffset);
         
         const checkboxes = document.querySelectorAll('.checkboxes-grid input[type="checkbox"]');
-        const shouldPlay = currentChord && checkboxes[beatIndex] && checkboxes[beatIndex].checked;
+		const shouldPlay = currentChord && checkboxes[beatInBar] && checkboxes[beatInBar].checked;
+		const immediateMode = document.getElementById('immediateMode').checked;
+
+		// Only play from metronome if NOT in immediate mode
+		if (shouldPlay && !immediateMode) {
+			if (repeatMode || beatsPlayedInBar < division) {
+				const notes = chordDefinitions[currentChord];
+				const playDuration = noteDuration * 0.9;
+				synth.triggerAttackRelease(notes, playDuration, beatTime);
+			}
+		}
+
+		nextBeatTime += noteDuration;
+		currentBeatIndex++;
+
+		if (currentChord && !immediateMode) {
+			beatsPlayedInBar++;
+		}
         
-        if (shouldPlay && (repeatMode || beatsPlayedInBar < division)) {
-            const notes = chordDefinitions[currentChord];
-            const playDuration = noteDuration * 0.9;
-            synth.triggerAttackRelease(notes, playDuration, beatTime);
-        }
-        
-        nextBeatTime += noteDuration;
-        currentBeatIndex++;
-        beatsPlayedInBar++;
-        
-        if (currentBeatIndex >= division) {
-            currentBeatIndex = 0;
-            
-            if (!repeatMode && !songMode && beatsPlayedInBar >= division) {
-                Tone.Draw.schedule(() => {
-                    currentChord = null;
-                    updateChordDisplay(null);
-                }, beatTime);
-            }
-            
-            if (nextChord) {
-                currentChord = nextChord;
-                nextChord = null;
-                beatsPlayedInBar = 0;
-                Tone.Draw.schedule(() => {
-                    updateChordDisplay(currentChord);
-                }, beatTime);
-            }
-        }
+        // Check if we've completed a bar
+		// Check if we've completed a bar
+		if (beatInBar === division - 1) {
+			// In song mode with immediate response, don't auto-clear the chord
+			const immediateMode = document.getElementById('immediateMode').checked;
+			
+			// Clear chord after one bar in immediate mode without repeat
+			if (immediateMode && !repeatMode && currentChord) {
+				const barsPlayed = Math.floor(beatsPlayedInBar / division);
+				if (barsPlayed >= 1) {
+					Tone.Draw.schedule(() => {
+						currentChord = null;
+						updateChordDisplay(null);
+						beatsPlayedInBar = 0;
+					}, beatTime);
+				}
+			}
+			
+			if (!repeatMode && !songMode && !immediateMode && beatsPlayedInBar >= division) {
+				Tone.Draw.schedule(() => {
+					currentChord = null;
+					updateChordDisplay(null);
+				}, beatTime);
+			}
+			
+			// Only switch to nextChord if it was explicitly set (not in song mode with immediate)
+			if (nextChord && !immediateMode) {
+				currentChord = nextChord;
+				nextChord = null;
+				beatsPlayedInBar = 0;
+				Tone.Draw.schedule(() => {
+					updateChordDisplay(currentChord);
+				}, beatTime);
+			}
+		}
     }
     
     requestAnimationFrame(scheduleMetronome);
 }
 
-// Stop metronome
+// Find stopMetronome() and add these lines at the beginning:
 function stopMetronome() {
     isScheduling = false;
-    
+    document.getElementById('beatGridContainer').scrollLeft = 0;
+    chordStartBeatIndex = -1
+   
     if (metronomeInterval) {
         clearInterval(metronomeInterval);
         metronomeInterval = null;
@@ -1246,7 +1641,7 @@ function stopMetronome() {
 }
 
 // Handle chord click
-async function handleChordClick(chordName) {
+/*async function handleChordClick(chordName) {
     await Tone.start();
     
     const sustainMode = document.getElementById('sustainMode').checked;
@@ -1269,11 +1664,118 @@ async function handleChordClick(chordName) {
     
     const immediateMode = document.getElementById('immediateMode').checked;
     
-    if (immediateMode && isPlaying) {
-        isScheduling = false;
+		if (immediateMode && isPlaying) {
+			// Update the chord and play it immediately
+			currentChord = chordName;
+			updateChordDisplay(chordName);
+			
+			// Track when this chord was clicked (absolute beat position)
+			chordStartBeatIndex = currentBeatIndex;
+			
+			const bpm = parseInt(document.getElementById('bpm').value);
+			const timeSignature = document.getElementById('timeSignature').value;
+			const division = parseInt(document.querySelector('input[name="division"]:checked').value);
+			const beatsPerBar = parseInt(timeSignature.split('/')[0]);
+			const beatDuration = 60 / bpm;
+			const playDuration = (beatsPerBar / division) * beatDuration * 0.9;
+			
+			// Play immediately when clicked
+			const notes = chordDefinitions[chordName];
+			synth.triggerAttackRelease(notes, playDuration, Tone.now());
+			
+			const button = document.querySelector(`[data-chord="${chordName}"]`);
+			button.classList.add('playing');
+			setTimeout(() => button.classList.remove('playing'), 200);
+			
+			return;
+		}
+    
+    if (waitingForFirstChord) {
+        waitingForFirstChord = false;
+        if (!immediateMode) {
+            nextChord = chordName;
+        } else {
+            currentChord = chordName;
+            updateChordDisplay(chordName);
+        }
+        beatsPlayedInBar = 0;
+        isPlaying = true;
+		} else if (!isPlaying && !isCountingIn) {
+			currentChord = chordName;
+			updateChordDisplay(chordName);
+			beatsPlayedInBar = 0;
+			chordStartBeatIndex = 0;
+			isPlaying = true;
+			startMetronome();  // Always start metronome
+			document.getElementById('stopBtn').disabled = false;
+			document.getElementById('startBtn').disabled = true;
+			
+			const sustainMode = document.getElementById('sustainMode').checked;
+			
+			// Play the first chord immediately if in immediate mode but NOT in sustain mode
+			// (In sustain mode, sound only plays when button is held)
+			if (immediateMode && !sustainMode) {
+				const bpm = parseInt(document.getElementById('bpm').value);
+				const timeSignature = document.getElementById('timeSignature').value;
+				const division = parseInt(document.querySelector('input[name="division"]:checked').value);
+				const beatsPerBar = parseInt(timeSignature.split('/')[0]);
+				const beatDuration = 60 / bpm;
+				const playDuration = (beatsPerBar / division) * beatDuration * 0.9;
+				
+				const notes = chordDefinitions[chordName];
+				synth.triggerAttackRelease(notes, playDuration, Tone.now());
+				
+				const button = document.querySelector(`[data-chord="${chordName}"]`);
+				button.classList.add('playing');
+				setTimeout(() => button.classList.remove('playing'), 200);
+			}
+		} else if (isPlaying && !immediateMode) {
+        nextChord = chordName;
+    }
+}*/
+
+async function handleChordClick(chordName) {
+    await Tone.start();
+    
+    const sustainMode = document.getElementById('sustainMode').checked;
+    const immediateMode = document.getElementById('immediateMode').checked;
+    
+    // In sustain mode, handle the sound separately
+    if (sustainMode) {
+        startSustain(chordName);
+        updateChordDisplay(chordName);
         
+        // If metronome isn't running yet, start it (for visual beat guidance)
+        if (!isPlaying && !isCountingIn) {
+            currentChord = chordName;
+            beatsPlayedInBar = 0;
+            chordStartBeatIndex = 0;
+            isPlaying = true;
+            startMetronome();
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('startBtn').disabled = true;
+        }
+        
+        return; // Don't continue to the immediate/normal playback logic
+    }
+    
+    if (songMode) {
+        const isCorrect = checkSongChord(chordName);
+        
+        if (!isCorrect && currentSong) {
+            const button = document.querySelector(`[data-chord="${chordName}"]`);
+            button.classList.add('wrong-chord-flash');
+            setTimeout(() => button.classList.remove('wrong-chord-flash'), 500);
+        }
+    }
+    
+    if (immediateMode && isPlaying) {
+        // Update the chord and play it immediately
         currentChord = chordName;
         updateChordDisplay(chordName);
+        
+        // Track when this chord was clicked (absolute beat position)
+        chordStartBeatIndex = currentBeatIndex;
         
         const bpm = parseInt(document.getElementById('bpm').value);
         const timeSignature = document.getElementById('timeSignature').value;
@@ -1282,20 +1784,13 @@ async function handleChordClick(chordName) {
         const beatDuration = 60 / bpm;
         const playDuration = (beatsPerBar / division) * beatDuration * 0.9;
         
+        // Play immediately when clicked
         const notes = chordDefinitions[chordName];
         synth.triggerAttackRelease(notes, playDuration, Tone.now());
         
         const button = document.querySelector(`[data-chord="${chordName}"]`);
         button.classList.add('playing');
         setTimeout(() => button.classList.remove('playing'), 200);
-        
-        currentBeatIndex = 0;
-        nextBeatTime = Tone.now();
-        nextChord = null;
-        beatsPlayedInBar = 0;
-        
-        isScheduling = true;
-        scheduleMetronome();
         
         return;
     }
@@ -1314,10 +1809,28 @@ async function handleChordClick(chordName) {
         currentChord = chordName;
         updateChordDisplay(chordName);
         beatsPlayedInBar = 0;
+        chordStartBeatIndex = 0;
         isPlaying = true;
         startMetronome();
         document.getElementById('stopBtn').disabled = false;
         document.getElementById('startBtn').disabled = true;
+        
+        // Play the first chord immediately if in immediate mode
+        if (immediateMode) {
+            const bpm = parseInt(document.getElementById('bpm').value);
+            const timeSignature = document.getElementById('timeSignature').value;
+            const division = parseInt(document.querySelector('input[name="division"]:checked').value);
+            const beatsPerBar = parseInt(timeSignature.split('/')[0]);
+            const beatDuration = 60 / bpm;
+            const playDuration = (beatsPerBar / division) * beatDuration * 0.9;
+            
+            const notes = chordDefinitions[chordName];
+            synth.triggerAttackRelease(notes, playDuration, Tone.now());
+            
+            const button = document.querySelector(`[data-chord="${chordName}"]`);
+            button.classList.add('playing');
+            setTimeout(() => button.classList.remove('playing'), 200);
+        }
     } else if (isPlaying && !immediateMode) {
         nextChord = chordName;
     }
@@ -1391,11 +1904,12 @@ document.getElementById('startBtn').addEventListener('click', async () => {
 
 document.getElementById('stopBtn').addEventListener('click', stopMetronome);
 
+
 // Initialize
 initSynth('guitar');
 updateCheckboxes();
-displayChordButtons(['E', 'B', 'G#m', 'C#m', 'A', 'F#m']); // Add this line
+displayChordButtons(['E', 'B', 'G#m', 'C#m', 'A', 'F#m']);
+createBeatGrid(); // Add this line
     </script>
 </body>
-
 </html>
