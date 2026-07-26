@@ -1,0 +1,5391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chord Player</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+	<!-- ADD THIS LINE: -->
+	<script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <style>
+        * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    min-height: 100vh;
+    padding: 20px;
+    background-attachment: fixed;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+h1 {
+    text-align: center;
+    color: #667eea;
+    margin-bottom: 30px;
+    font-size: 2em;
+}
+
+
+
+.control-group:last-child {
+    margin-bottom: 0;
+}
+
+label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+select, input[type="number"] {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+}
+
+select:focus, input[type="number"]:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+
+
+.radio-group {
+    display: flex;
+    gap: 15px;
+    margin-top: 8px;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.radio-option input[type="radio"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.checkboxes-container {
+    margin-top: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    border: 2px solid #e0e0e0;
+}
+
+.checkboxes-grid {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: all 0.1s;
+}
+
+.checkbox-item.active {
+    background: #667eea;
+    color: white;
+    transform: scale(1.1);
+}
+
+.checkbox-item input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+@keyframes countPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.count-in-display {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+    text-align: center;
+    padding: 30px;
+    background: linear-gradient(135deg, #ffd43b 0%, #fab005 100%);
+    border-radius: 15px;
+    color: white;
+    font-size: 72px;
+    font-weight: bold;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(255, 212, 59, 0.4);
+    animation: countPulse 0.5s ease;
+}
+
+.count-in-display.hidden {
+    display: none !important;
+}
+
+.song-cue {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    text-align: center;
+    padding: 15px 40px;
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+    border-radius: 0 0 15px 15px;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.5);
+    animation: cuePulse 0.8s ease infinite;
+    max-width: 80%;
+}
+.song-cue.hidden {
+    display: none !important;
+}
+
+.song-cue .countdown {
+    font-size: 20px;
+    margin-top: 5px;
+}
+
+@keyframes cuePulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.9; }
+}
+
+
+
+.progression-display {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.progression-display.hidden {
+    display: none !important;
+}
+
+/*
+.chord-box {
+    flex: 1;
+    max-width: 350px;
+    text-align: center;
+    min-width: 250px;
+}
+
+.chord-box .label {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.chord-box .chord-value {
+    display: inline-block;
+    padding: 20px 40px;
+    border-radius: 15px;
+    font-size: 48px;
+    font-weight: bold;
+}
+
+.chord-box.current .chord-value {
+    background: #dee2e6;
+    color: #495057;
+    font-size: 32px;
+    padding: 15px 30px;
+}
+
+.chord-box.next .chord-value {
+    background: #ffc107;
+    color: #000;
+}
+*/
+
+.chords-section h2 {
+    color: #667eea;
+    margin-bottom: 12px;
+    margin-top: 5px;
+    text-align: center;
+    font-size: 1.1em;
+    font-weight: 600;
+}
+
+.chords-section h2.hidden {
+    display: none;
+}
+
+.chord-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.8);
+    filter: brightness(1.1);
+}
+
+.chord-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4);
+}
+
+.chord-btn.playing {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    animation: chordPlay 0.4s ease;
+    box-shadow: 0 0 30px rgba(240, 147, 251, 0.8);
+}
+
+@keyframes chordPlay {
+    0% { 
+        transform: scale(1);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    50% { 
+        transform: scale(1.08);
+        box-shadow: 0 0 40px rgba(240, 147, 251, 1);
+    }
+    100% { 
+        transform: scale(1);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+}
+
+/* Add particle effect overlay */
+.chord-btn.playing::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, transparent 70%);
+    transform: translate(-50%, -50%) scale(0);
+    border-radius: 15px;
+    animation: particleExpand 0.4s ease;
+    pointer-events: none;
+}
+
+@keyframes particleExpand {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1.5);
+        opacity: 0;
+    }
+}
+
+.controls-section {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 15px;
+}
+
+.control-group {
+    margin-bottom: 10px;
+}
+
+.controls-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.controls-row-three {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.rhythm-controls {
+    display: contents;
+}
+
+.rhythm-group {
+    min-width: auto;
+}
+
+.checkboxes-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.checkboxes-row label {
+    display: inline;
+    margin-bottom: 0;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.progression-container {
+    margin: 0 0 15px 0;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    position: sticky;
+    top: 10px;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.beat-grid-container {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-behavior: smooth;
+}
+
+.beat-grid-wrapper {
+    display: inline-block;
+    min-width: 100%;
+}
+
+.beat-grid {
+    display: inline-grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 60px;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.beat-box {
+    aspect-ratio: 1;
+    border: 3px solid #dee2e6;
+    border-radius: 8px;
+    background: white;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.beat-box.bar-start {
+    border-left: 5px solid #667eea;
+}
+
+.beat-box.active {
+    background: #667eea;
+    border-color: #667eea;
+    transform: scale(1.1);
+    box-shadow: 0 4px 10px rgba(102, 126, 234, 0.4);
+}
+
+.beat-box.played {
+    background: #e9ecef;
+    border-color: #adb5bd;
+}
+
+.beat-box .beat-number {
+    position: absolute;
+    top: 2px;
+    left: 4px;
+    font-size: 10px;
+    color: #6c757d;
+    font-weight: 600;
+}
+
+.beat-box.active .beat-number {
+    color: white;
+}
+
+
+.chord-labels {
+    display: inline-grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 60px;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.cue-labels {
+    display: inline-grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 60px;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.cue-label-box {
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+    background: #51cf66;
+    padding: 8px 4px;
+    border-radius: 6px;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cue-label-box.empty {
+    background: transparent;
+}
+
+.cue-label-box.passed {
+    background: #95d5a7;
+    opacity: 0.5;
+}
+
+.chord-label {
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    color: #000;
+    background: #ffc107;
+    padding: 8px 4px;
+    border-radius: 6px;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chord-label.empty {
+    background: transparent;
+}
+
+.current-chord-small {
+    text-align: center;
+    padding: 10px;
+    background: #e9ecef;
+    border-radius: 8px;
+    font-size: 16px;
+}
+
+.current-chord-small .label-small {
+    color: #666;
+    margin-right: 10px;
+    font-weight: 600;
+}
+
+.current-chord-small #currentChordSmall {
+    font-size: 24px;
+    font-weight: bold;
+    color: #495057;
+}
+
+.chords-section {
+    margin-top: 15px;
+}
+
+.chord-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+}
+
+.chord-btn {
+    padding: 30px;
+    font-size: 24px;
+    font-weight: bold;
+    border: none;
+    border-radius: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.control-buttons {
+    display: flex;
+    gap: 15px;
+    margin-top: 15px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.start-btn {
+    flex: 1;
+    padding: 20px;
+    font-size: 20px;
+    font-weight: bold;
+    border: none;
+    border-radius: 15px;
+    background: linear-gradient(135deg, #51cf66 0%, #2f9e44 100%);
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 15px rgba(81, 207, 102, 0.4);
+}
+
+.start-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(81, 207, 102, 0.6);
+}
+
+.start-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(81, 207, 102, 0.4);
+}
+
+.start-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.start-btn:disabled:hover {
+    transform: none;
+}
+
+.stop-btn {
+    flex: 1;
+    padding: 20px;
+    font-size: 20px;
+    font-weight: bold;
+    border: none;
+    border-radius: 15px;
+    background: linear-gradient(135deg, #ff6b6b 0%, #c92a2a 100%);
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+}
+
+.stop-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+}
+
+.stop-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(255, 107, 107, 0.4);
+}
+
+.stop-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.stop-btn:disabled:hover {
+    transform: none;
+}
+
+.wrong-chord-flash {
+    animation: wrongFlash 0.5s ease;
+}
+
+@keyframes wrongFlash {
+    0%, 100% { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    50% { background: linear-gradient(135deg, #ff6b6b 0%, #c92a2a 100%); }
+}
+@keyframes nextChordFlash {
+    0%, 100% { 
+        background: #ffc107;
+        transform: scale(1);
+    }
+    50% { 
+        background: #51cf66;
+        transform: scale(1.1);
+    }
+}
+//.chord-box.next 
+.chord-value.flash {
+    animation: nextChordFlash 0.4s ease;
+}
+/* Chord Selection Section */
+.chord-selection-section {
+    background: #f0f7ff;
+    padding: 25px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+    border: 3px solid #667eea;
+}
+
+.chord-selection-section h3 {
+    color: #667eea;
+    margin-bottom: 10px;
+    font-size: 1.5em;
+    text-align: center;
+}
+
+.instruction-text {
+    text-align: center;
+    color: #666;
+    margin-bottom: 20px;
+    font-size: 16px;
+}
+
+.chord-selection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.chord-select-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+    border: 3px solid #ddd;
+    border-radius: 10px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.chord-select-item:hover {
+    border-color: #667eea;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.chord-select-item input[type="checkbox"] {
+    margin-right: 10px;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+}
+
+.chord-select-item.selected {
+    background: linear-gradient(135deg, #51cf66 0%, #2f9e44 100%);
+    border-color: #2f9e44;
+    color: white;
+}
+
+.ready-btn {
+    width: 100%;
+    padding: 18px;
+    font-size: 20px;
+    font-weight: bold;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #51cf66 0%, #2f9e44 100%);
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 15px rgba(81, 207, 102, 0.4);
+}
+
+.ready-btn:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(81, 207, 102, 0.6);
+}
+
+.ready-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* Enhanced chord labels for personalized view */
+.chord-label.my-chord {
+    background: #51cf66;
+    color: white;
+    font-size: 20px;
+    font-weight: bold;
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(81, 207, 102, 0.4);
+}
+
+.chord-label.other-chord {
+    background: #ffc107;
+    opacity: 0.6;
+    font-size: 14px;
+}
+
+/* Pulse animation for upcoming chords */
+@keyframes chordPulse {
+    0%, 100% { transform: scale(1.1); }
+    50% { transform: scale(1.15); }
+}
+
+.chord-label.my-chord.upcoming {
+    animation: chordPulse 0.8s ease-in-out infinite;
+}
+
+/* Room Section Styles */
+.room-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 25px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+    color: white;
+}
+
+.room-section h3 {
+    color: white;
+    margin-bottom: 20px;
+    font-size: 1.5em;
+    text-align: center;
+}
+
+.room-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.room-btn {
+    padding: 18px;
+    font-size: 18px;
+    font-weight: bold;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.create-room-btn {
+    background: linear-gradient(135deg, #51cf66 0%, #2f9e44 100%);
+    color: white;
+}
+
+.join-room-btn {
+    background: linear-gradient(135deg, #ffd43b 0%, #fab005 100%);
+    color: #333;
+}
+
+.leave-room-btn {
+    background: linear-gradient(135deg, #ff6b6b 0%, #c92a2a 100%);
+    color: white;
+    width: 100%;
+    margin-top: 15px;
+}
+
+.room-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.room-btn:active {
+    transform: translateY(0);
+}
+
+.room-info {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+}
+
+.pin-display {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+}
+
+.pin-display label {
+    font-weight: bold;
+    font-size: 16px;
+    color: white;
+}
+
+.pin-code {
+    font-size: 32px;
+    font-weight: bold;
+    letter-spacing: 8px;
+    color: #ffd43b;
+    flex: 1;
+    text-align: center;
+    font-family: 'Courier New', monospace;
+}
+
+.copy-btn {
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid white;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.copy-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.user-list-container {
+    margin: 15px 0;
+}
+
+.user-list-container h4 {
+    color: white;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.user-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.user-item {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 12px 15px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.user-item.host {
+    background: rgba(255, 212, 59, 0.3);
+    border: 2px solid #ffd43b;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.user-name {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.user-details {
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+.user-chords {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.user-chord-tag {
+    background: rgba(81, 207, 102, 0.8);
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content h3 {
+    color: #667eea;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.modal-content p {
+    color: #666;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.pin-input {
+    width: 100%;
+    padding: 15px;
+    font-size: 24px;
+    text-align: center;
+    letter-spacing: 8px;
+    border: 3px solid #667eea;
+    border-radius: 10px;
+    font-family: 'Courier New', monospace;
+    margin-bottom: 20px;
+}
+
+.pin-input:focus {
+    outline: none;
+    border-color: #764ba2;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+.modal-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.modal-btn {
+    padding: 15px;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.cancel-btn {
+    background: #e9ecef;
+    color: #333;
+}
+
+.confirm-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.modal-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Song Queue Section */
+.song-queue-section {
+    margin-top: 20px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.song-queue-section h4 {
+    color: white;
+    margin-bottom: 15px;
+    font-size: 16px;
+}
+
+.current-song-display {
+    background: rgba(255, 212, 59, 0.3);
+    border: 2px solid #ffd43b;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.current-song-label {
+    font-size: 12px;
+    opacity: 0.9;
+    margin-bottom: 5px;
+}
+
+.current-song-name {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffd43b;
+}
+
+.add-to-queue-controls {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.queue-song-select {
+    padding: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 14px;
+}
+
+.queue-song-select option {
+    background: #667eea;
+    color: white;
+}
+
+.add-queue-btn {
+    padding: 10px 20px;
+    background: rgba(81, 207, 102, 0.8);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.add-queue-btn:hover {
+    background: rgba(81, 207, 102, 1);
+    transform: translateY(-2px);
+}
+
+.add-queue-btn:disabled {
+    background: rgba(255, 255, 255, 0.2);
+    cursor: not-allowed;
+    transform: none;
+}
+
+.queue-list {
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+}
+
+.queue-empty {
+    text-align: center;
+    padding: 20px;
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+}
+
+.queue-item {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 10px 12px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s;
+}
+
+.queue-item:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.queue-item-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.queue-item-number {
+    background: rgba(255, 255, 255, 0.3);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    min-width: 24px;
+    text-align: center;
+}
+
+.queue-item-name {
+    font-weight: 500;
+}
+
+.queue-item-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.queue-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.queue-btn:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+.remove-queue-btn {
+    background: rgba(255, 107, 107, 0.6);
+}
+
+.remove-queue-btn:hover {
+    background: rgba(255, 107, 107, 0.9);
+}
+
+.next-song-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #ffd43b 0%, #fab005 100%);
+    border: none;
+    border-radius: 8px;
+    color: #333;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.next-song-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 212, 59, 0.4);
+}
+
+.next-song-btn:disabled {
+    background: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.5);
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Auto-Advance Controls */
+.auto-advance-controls {
+    margin: 15px 0;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.auto-advance-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.auto-advance-label input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.auto-advance-label span {
+    flex: 1;
+}
+
+/* Song completion message */
+.song-complete-message {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 3000;
+    background: linear-gradient(135deg, #51cf66 0%, #2f9e44 100%);
+    padding: 30px 40px;
+    border-radius: 15px;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    animation: slideInDown 0.5s ease;
+}
+
+@keyframes slideInDown {
+    from {
+        transform: translate(-50%, -100%);
+        opacity: 0;
+    }
+    to {
+        transform: translate(-50%, -50%);
+        opacity: 1;
+    }
+}
+
+/* Sync Indicator */
+.sync-indicator {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 3000;
+    background: linear-gradient(135deg, #ffd43b 0%, #fab005 100%);
+    padding: 12px 20px;
+    border-radius: 8px;
+    color: #333;
+    font-size: 14px;
+    font-weight: bold;
+    box-shadow: 0 4px 15px rgba(255, 212, 59, 0.4);
+    animation: slideInRight 0.3s ease;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Toast Notification System */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 4000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 350px;
+}
+
+.toast {
+    background: white;
+    padding: 16px 20px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideInRight 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.toast::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+}
+
+.toast.success::before {
+    background: #51cf66;
+}
+
+.toast.error::before {
+    background: #ff6b6b;
+}
+
+.toast.info::before {
+    background: #667eea;
+}
+
+.toast.warning::before {
+    background: #ffd43b;
+}
+
+.toast-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.toast.success .toast-icon {
+    color: #51cf66;
+}
+
+.toast.error .toast-icon {
+    color: #ff6b6b;
+}
+
+.toast.info .toast-icon {
+    color: #667eea;
+}
+
+.toast.warning .toast-icon {
+    color: #ffd43b;
+}
+
+.toast-content {
+    flex: 1;
+}
+
+.toast-title {
+    font-weight: bold;
+    font-size: 14px;
+    margin-bottom: 4px;
+    color: #333;
+}
+
+.toast-message {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.4;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #999;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: color 0.2s;
+}
+
+.toast-close:hover {
+    color: #333;
+}
+
+.toast.removing {
+    animation: slideOutRight 0.3s ease forwards;
+}
+
+@keyframes slideOutRight {
+    to {
+        transform: translateX(120%);
+        opacity: 0;
+    }
+}
+
+/* Mobile responsiveness for toasts */
+@media (max-width: 768px) {
+    .toast-container {
+        left: 20px;
+        right: 20px;
+        max-width: none;
+    }
+}
+
+/* Song Progress Bar - Compact */
+.song-progress-bar {
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: rgba(102, 126, 234, 0.08);
+    border-radius: 8px;
+    border: 1px solid rgba(102, 126, 234, 0.15);
+}
+
+.progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.progress-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #667eea;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.progress-text {
+    font-size: 12px;
+    font-weight: bold;
+    color: #495057;
+}
+
+.progress-track {
+    width: 100%;
+    height: 6px;
+    background: #e9ecef;
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.3s ease;
+    position: relative;
+}
+
+.progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* Loading Overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 5000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+}
+
+.spinner {
+    width: 60px;
+    height: 60px;
+    border: 6px solid rgba(255, 255, 255, 0.2);
+    border-top-color: #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-text {
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+}
+/* ========================================
+   MOBILE RESPONSIVENESS
+   ======================================== */
+
+/* Tablets and smaller (768px and below) */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+	
+	 /* Extra compact on mobile */
+    .progression-container {
+        padding: 10px;
+        margin: 0 0 10px 0;
+    }
+    
+    .song-progress-bar {
+        padding: 6px 8px;
+        margin-top: 8px;
+    }
+    
+    .progress-label {
+        font-size: 10px;
+    }
+    
+    .progress-text {
+        font-size: 11px;
+    }
+    
+    .progress-track {
+        height: 5px;
+    }
+    
+    /* Smaller heading on mobile */
+    .chords-section h2 {
+        margin-top: 3px;
+        margin-bottom: 10px;
+        font-size: 1em;
+    }
+    
+    .container {
+        padding: 20px;
+        border-radius: 15px;
+    }
+    
+    h1 {
+        font-size: 1.5em;
+        margin-bottom: 20px;
+    }
+    
+    /* Larger touch targets for mobile */
+    .chord-btn {
+        padding: 25px 20px;
+        font-size: 20px;
+        min-height: 80px;
+    }
+    
+    .chord-buttons {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 12px;
+    }
+    
+    /* Control buttons */
+    .start-btn, .stop-btn {
+        padding: 18px;
+        font-size: 18px;
+    }
+    
+    .control-buttons {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    /* Room controls */
+    .room-btn {
+        padding: 16px;
+        font-size: 16px;
+    }
+    
+    /* Beat grid - horizontal scroll on mobile */
+    .beat-grid-container {
+        margin: 0 -20px;
+        padding: 0 20px;
+    }
+    
+    .beat-grid {
+        grid-auto-columns: 50px;
+        gap: 6px;
+    }
+    
+    .chord-labels, .cue-labels {
+        grid-auto-columns: 50px;
+        gap: 6px;
+    }
+    
+    /* Stack controls vertically on mobile */
+    .controls-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .controls-row-three {
+        grid-template-columns: 1fr;
+    }
+    
+    /* PIN display */
+    .pin-display {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .pin-code {
+        font-size: 28px;
+        letter-spacing: 6px;
+    }
+    
+    /* User list */
+    .user-item {
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+    
+    /* Queue items */
+    .queue-item {
+        padding: 8px 10px;
+        font-size: 14px;
+    }
+    
+    .add-to-queue-controls {
+        grid-template-columns: 1fr;
+    }
+    
+    .add-queue-btn {
+        width: 100%;
+    }
+    
+    /* Modal */
+    .modal-content {
+        padding: 25px 20px;
+        width: 95%;
+    }
+    
+    .pin-input {
+        font-size: 20px;
+        letter-spacing: 6px;
+    }
+    
+    /* Checkboxes grid */
+    .checkboxes-grid {
+        gap: 8px;
+    }
+    
+    .checkbox-item {
+        padding: 6px 10px;
+        font-size: 14px;
+    }
+    
+    /* Progress bar */
+    .song-progress-bar {
+        padding: 10px 12px;
+    }
+    
+    .progress-text {
+        font-size: 13px;
+    }
+    
+    /* Song cue overlay */
+    .song-cue {
+        font-size: 20px;
+        padding: 12px 30px;
+    }
+    
+    .song-cue .countdown {
+        font-size: 18px;
+    }
+    
+    /* Count-in display */
+    .count-in-display {
+        font-size: 60px;
+        padding: 25px;
+    }
+}
+
+/* Small phones (480px and below) */
+@media (max-width: 480px) {
+    .container {
+        padding: 15px;
+    }
+    
+    h1 {
+        font-size: 1.3em;
+    }
+    
+    /* Even larger touch targets for small phones */
+    .chord-btn {
+        padding: 20px 15px;
+        font-size: 18px;
+        min-height: 70px;
+    }
+    
+    .chord-buttons {
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 10px;
+    }
+    
+    /* Beat grid smaller on tiny screens */
+    .beat-grid {
+        grid-auto-columns: 45px;
+		gap: 6px;
+    }
+    
+    .chord-labels, .cue-labels {
+        grid-auto-columns: 45px;
+		gap: 6px;
+    }
+    
+    .chord-label, .cue-label-box {
+        font-size: 14px;
+        min-height: 35px;
+    }
+    
+    /* PIN code */
+    .pin-code {
+        font-size: 24px;
+        letter-spacing: 4px;
+    }
+    
+    /* Controls */
+    .start-btn, .stop-btn {
+        padding: 15px;
+        font-size: 16px;
+    }
+    
+    /* User items */
+    .user-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .user-chord-tag {
+        font-size: 11px;
+    }
+    
+    /* Count-in */
+    .count-in-display {
+        font-size: 48px;
+        padding: 20px;
+    }
+    
+    /* Radio buttons */
+    .radio-group {
+        flex-wrap: wrap;
+    }
+}
+
+/* Landscape mode on phones */
+@media (max-width: 896px) and (orientation: landscape) {
+    .container {
+        max-width: 100%;
+    }
+    
+    .beat-grid-container {
+        max-height: 40vh;
+    }
+    
+    .chord-buttons {
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    }
+    
+    .controls-section {
+        padding: 15px;
+    }
+}
+
+/* Tablets in portrait (768px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .container {
+        max-width: 750px;
+    }
+    
+    .chord-buttons {
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    }
+}
+
+/* Smooth transitions for better UX */
+* {
+    transition: background-color 0.2s ease, 
+                color 0.2s ease, 
+                border-color 0.2s ease,
+                opacity 0.2s ease;
+}
+
+/* But not for transforms and positions (performance) */
+*:not(.chord-btn):not(.beat-box):not(.toast) {
+    transition: background-color 0.2s ease, 
+                color 0.2s ease, 
+                border-color 0.2s ease,
+                opacity 0.2s ease;
+}
+
+/* Smooth animations for interactive elements */
+button, .chord-btn, .room-btn, .start-btn, .stop-btn {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Smooth scroll behavior */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Accessibility Improvements */
+
+/* Focus visible for keyboard navigation */
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+    outline: 3px solid #667eea;
+    outline-offset: 2px;
+}
+
+/* Better contrast for disabled elements */
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Screen reader only content */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* High contrast mode improvements */
+@media (prefers-contrast: high) {
+    .chord-btn {
+        border: 3px solid white;
+    }
+    
+    .beat-box {
+        border-width: 4px;
+    }
+    
+    .chord-label {
+        border: 2px solid black;
+    }
+}
+
+/* Enhanced feedback animations */
+
+/* Pulse effect for active elements */
+@keyframes activePulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 15px rgba(102, 126, 234, 0);
+    }
+}
+
+.beat-box.active {
+    animation: activePulse 0.6s ease-out;
+}
+
+/* Success feedback */
+@keyframes successPulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 20px rgba(81, 207, 102, 0.8);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.success-feedback {
+    animation: successPulse 0.4s ease;
+}
+
+/* Error shake */
+@keyframes errorShake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.error-feedback {
+    animation: errorShake 0.5s ease;
+}
+
+/* Selection Section Headers */
+.selection-section-header {
+    grid-column: 1 / -1;
+    font-size: 14px;
+    font-weight: bold;
+    color: #667eea;
+    padding: 8px 0;
+    margin-top: 10px;
+    border-bottom: 2px solid rgba(102, 126, 234, 0.2);
+}
+
+.selection-section-header:first-child {
+    margin-top: 0;
+}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Chord Player</h1>
+        
+        <div class="controls-section">
+			<div class="controls-row">
+				<div class="control-group">
+					<label for="songSelect">Song:</label>
+					<select id="songSelect">
+						<option value="">-- Select a Song --</option>
+						<option value="inthandam">Inthandam</option>
+						<option value="ChinniChinni">Chinni Chinni Aasa</option>
+					</select>
+				</div>
+
+				<div class="control-group">
+					<label for="instrument">Instrument:</label>
+					<select id="instrument">
+						<option value="guitar">Guitar</option>
+						<option value="violin">Violin</option>
+						<option value="pads">Pads</option>
+					</select>
+				</div>
+			</div>
+
+			<div class="controls-row-three">
+				<div class="control-group">
+					<label for="bpm">BPM:</label>
+					<input type="number" id="bpm" value="120" min="40" max="240">
+				</div>
+
+				<div class="control-group">
+					<label for="timeSignature">Time Signature:</label>
+					<select id="timeSignature">
+						<option value="4/4">4/4</option>
+						<option value="3/4">3/4</option>
+					</select>
+				</div>
+
+				<div class="control-group">
+					<label>Note Division:</label>
+					<div class="radio-group">
+						<div class="radio-option">
+							<input type="radio" name="division" value="4" id="div4" checked>
+							<label for="div4">4</label>
+						</div>
+						<div class="radio-option">
+							<input type="radio" name="division" value="8" id="div8">
+							<label for="div8">8</label>
+						</div>
+						<div class="radio-option">
+							<input type="radio" name="division" value="16" id="div16">
+							<label for="div16">16</label>
+						</div>
+						<div class="radio-option">
+							<input type="radio" name="division" value="32" id="div32">
+							<label for="div32">32</label>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="checkboxes-row">
+				<label>
+					<input type="checkbox" id="immediateMode" checked>
+					Immediate Response Mode
+				</label>
+				<label>
+					<input type="checkbox" id="repeatMode">
+					Repeat
+				</label>
+				<label>
+					<input type="checkbox" id="sustainMode">
+					Sustain
+				</label>
+			</div>
+
+			<div class="checkboxes-container">
+				<div class="checkboxes-grid" id="checkboxesGrid"></div>
+			</div>
+		</div>
+		<!-- Multi-User Room Section -->
+		<div class="room-section" id="roomSection">
+			<h3>🎵 Multi-User Room</h3>
+			
+			<div class="room-controls" id="roomControls">
+				<button class="room-btn create-room-btn" id="createRoomBtn">
+					🏠 Create Room (Host)
+				</button>
+				<button class="room-btn join-room-btn" id="joinRoomBtn">
+					🚪 Join Room (Guest)
+				</button>
+			</div>
+			
+			<div class="room-info hidden" id="roomInfo">
+				<div class="pin-display">
+					<label>Room PIN:</label>
+					<div class="pin-code" id="pinCode">------</div>
+					<button class="copy-btn" id="copyPinBtn">📋 Copy</button>
+				</div>
+				
+				<div class="user-list-container">
+					<h4>Connected Users (<span id="userCount">0</span>)</h4>
+					<div class="user-list" id="userList">
+						<!-- Users will be added here dynamically -->
+					</div>
+				</div>
+				<!-- Song Queue Section -->
+				<div class="song-queue-section" id="songQueueSection">
+					<h4>Song Queue</h4>
+					
+					<!-- Current Song Display -->
+					<div class="current-song-display" id="currentSongDisplay">
+						<div class="current-song-label">Now Playing:</div>
+						<div class="current-song-name" id="currentSongName">No song selected</div>
+					</div>
+					
+					<!-- Add to Queue (Host Only) -->
+					<div class="add-to-queue-controls" id="addToQueueControls">
+						<select id="queueSongSelect" class="queue-song-select">
+							<option value="">-- Add Song to Queue --</option>
+						</select>
+						<button class="add-queue-btn" id="addToQueueBtn">+ Add</button>
+					</div>
+					
+					<!-- Queue List -->
+					<div class="queue-list" id="queueList">
+						<div class="queue-empty" id="queueEmpty">Queue is empty</div>
+					</div>
+					
+					<!-- Auto-Advance Toggle (Host Only) -->
+					<div class="auto-advance-controls" id="autoAdvanceControls">
+						<label class="auto-advance-label">
+							<input type="checkbox" id="autoAdvanceCheckbox" checked>
+							<span>Auto-advance to next song when complete</span>
+						</label>
+					</div>
+					
+					
+					<!-- Next Song Button (Host Only) -->
+					<button class="next-song-btn hidden" id="nextSongBtn">⏭ Next Song</button>
+				</div>
+				<button class="room-btn leave-room-btn" id="leaveRoomBtn">
+					👋 Leave Room
+				</button>
+			</div>
+		</div>
+
+		<!-- Join Room Modal -->
+		<div class="modal hidden" id="joinRoomModal">
+			<div class="modal-content">
+				<h3>Join Room</h3>
+				<p>Enter the 6-digit PIN:</p>
+				<input type="text" id="joinPinInput" maxlength="6" placeholder="123456" class="pin-input">
+				<div class="modal-buttons">
+					<button class="modal-btn cancel-btn" id="cancelJoinBtn">Cancel</button>
+					<button class="modal-btn confirm-btn" id="confirmJoinBtn">Join</button>
+				</div>
+			</div>
+		</div>
+		<!-- Add this NEW section after controls-section closes -->
+		<div class="chord-selection-section" id="chordSelectionSection" style="display: none;">
+			<h3>Select Your Chords</h3>
+			<p class="instruction-text">Choose 1-4 chords you want to play:</p>
+			<div class="chord-selection-grid" id="chordSelectionGrid">
+				<!-- Will be populated dynamically -->
+			</div>
+			<button class="ready-btn" id="readyBtn" disabled>✓ Ready to Play</button>
+		</div>
+
+        <div class="count-in-display hidden" id="countInDisplay"></div>
+
+        <div class="song-cue hidden" id="songCue">
+            <div id="cueText"></div>
+            <div class="countdown" id="cueCountdown"></div>
+        </div>
+
+		
+        <div class="chords-section">
+            <div class="progression-container">
+				<div id="progressionDisplay" class="progression-display hidden">
+					<div class="beat-grid-container" id="beatGridContainer">
+						<div class="beat-grid-wrapper">
+							<div class="beat-grid" id="beatGrid"></div>
+							<div class="chord-labels" id="chordLabels"></div>
+							<div class="cue-labels" id="cueLabels"></div>
+						</div>
+					</div>
+					<!--
+					<div class="current-chord-small">
+						<span class="label-small">Currently Playing:</span>
+						<span id="currentChordSmall">--</span>
+					</div>
+					-->
+					<!-- ADD THIS NEW SECTION: -->
+					<div class="song-progress-bar" id="songProgressBar">
+						<div class="progress-info">
+							<span class="progress-label">Song Progress</span>
+							<span class="progress-text" id="progressText">Bar 0 / 0</span>
+						</div>
+						<div class="progress-track">
+							<div class="progress-fill" id="progressFill"></div>
+						</div>
+					</div>
+				</div>
+				</div>
+			</div>
+			<h2>Chords</h2>
+            <div class="chord-buttons"></div>
+            <div class="control-buttons">
+                <button class="start-btn" id="startBtn">▶ START COUNT-IN</button>
+                <button class="stop-btn" id="stopBtn" disabled>⏹ STOP</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Chord definitions (note names for each chord)
+const chordDefinitions = {
+    'E': ['E3', 'G#3', 'B3', 'E4'],
+    'B': ['B3', 'D#4', 'F#4', 'B4'],
+    'G#m': ['G#3', 'B3', 'D#4', 'G#4'],
+    'C#m': ['C#3', 'E3', 'G#3', 'C#4'],
+    'A': ['A3', 'C#4', 'E4', 'A4'],
+    'F#m': ['F#3', 'A3', 'C#4', 'F#4'],
+    'Eb': ['Eb3', 'G3', 'Bb3', 'Eb4'],
+    'Ab': ['Ab3', 'C4', 'Eb4', 'Ab4'],
+    'Db': ['Db3', 'F3', 'Ab3', 'Db4'],
+    'Bb': ['Bb3', 'D4', 'F4', 'Bb4'],
+    'Bbm': ['Bb3', 'Db4', 'F4', 'Bb4'],
+    'Fm': ['F3', 'Ab3', 'C4', 'F4'],
+	'D': ['D3', 'F#3', 'A3', 'D4'],
+	'Em': ['E3', 'G3', 'B3', 'E4'],
+	'G': ['G3', 'B3', 'D4', 'G4'],
+	'D7': ['D3', 'F#3', 'A3', 'C4'],
+	'Am': ['A3', 'C4', 'E4', 'A4'],
+	 // ADD THESE NEW NOTES for Kanulanu Thaake:
+    'G#3': ['G#3'],
+    'A#3': ['A#3'],
+    'B3': ['B3'],
+    'C#3': ['C#3'],
+    'D#3': ['D#3'],
+    'F#3': ['F#3'],
+    
+    'C4': ['C4'],
+    'D#4': ['D#4'],
+    'F4': ['F4'],
+    'G#4': ['G#4'],
+    'A#4': ['A#4'],
+    
+    'C5': ['C5'],
+    'D#5': ['D#5'],
+    
+    // ADD NEW CHORDS for Kanulanu Thaake:
+    'G#': ['G#3', 'C4', 'D#4', 'G#4'],
+    'D#m': ['D#3', 'F#3', 'A#3', 'D#4'],
+    'F#': ['F#3', 'A#3', 'C#4', 'F#4'],
+    'C#': ['C#3', 'F3', 'G#3', 'C#4'],
+    'A#': ['A#3', 'D4', 'F4', 'A#4'],
+    'Fm7': ['F3', 'Ab3', 'C4', 'Eb4']
+};
+
+// Song definitions - EASY TO ADD/EDIT SONGS HERE
+const songs = {
+    inthandam: {
+        name: 'Inthandam',
+        bpm: 200,
+        timeSignature: '4/4',
+		chords: ['E', 'B', 'G#m', 'C#m', 'A', 'F#m'], 
+        progression: [
+            // Intro pattern
+			{ chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'C#m', beat: 1 },
+			{ chord: 'A', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'C#m', beat: 1 },
+			{ chord: 'A', beat: 1 },
+            
+            // Cue for singing
+            { cue: 'Start Singing', beat: 1 },
+            
+            // Verse pattern
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'C#m', beat: 1 },
+			{ chord: 'A', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'C#m', beat: 1 },
+			{ chord: 'A', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'C#m', beat: 1 },
+			{ chord: 'A', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+            { chord: 'C#m', beat: 1 },
+			{ chord: 'A', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'E', beat: 1 },
+			{ chord: 'C#m', beat: 1 },
+			{ chord: 'C#m', beat: 1 },
+			{ chord: 'F#m', beat: 1 },
+			{ chord: 'B', beat: 1 },
+			{ chord: 'E', beat: 1 },
+			{ chord: 'E', beat: 1 },
+			{ chord: 'G#m', beat: 1 },
+			{ chord: 'C#m', beat: 1 },
+			{ chord: 'B', beat: 1 },
+			{ chord: 'B', beat: 1 },
+			
+            // Cue for chorus
+            { cue: 'Sing Chorus', beat: 1 },
+            { chord: 'E', beat: 1 },
+			{ chord: 'E', beat: 1 },
+			{ chord: 'G#m', beat: 1 },
+			{ chord: 'G#m', beat: 1 },
+			{ chord: 'C#m', beat: 1 },
+			{ chord: 'C#m', beat: 1 },
+			{ chord: 'B', beat: 1 },
+			{ chord: 'B', beat: 1 },
+			{ chord: 'E', beat: 1 },
+			{ chord: 'E', beat: 1 },
+			{ chord: 'G#m', beat: 1 },
+			{ chord: 'G#m', beat: 1 },
+			{ chord: 'E', beat: 1 },
+			{ chord: 'G#m', beat: 1 },
+			{ chord: 'A', beat: 1 },
+			{ chord: 'F#m', beat: 1 },
+			
+			{ chord: 'B', beat: 1 },
+			{ chord: 'G#m', beat: 1 },
+			{ chord: 'E', beat: 1 },
+			{ chord: 'B', beat: 1 },
+			
+			{ chord: 'C#m', beat: 1 },
+			{ chord: 'G#m', beat: 1 },
+			{ chord: 'A', beat: 1 },
+			{ chord: 'F#m', beat: 1 },
+			
+			{ chord: 'A', beat: 1 },
+			{ chord: 'F#m', beat: 1 },
+			{ chord: 'B', beat: 1 },
+			{ chord: 'B', beat: 1 }
+			
+        ]
+    },
+	ChinniChinni: {
+        name: 'Chinni Chinni Aasa',
+        bpm: 176,
+        timeSignature: '4/4',
+		chords: ['Eb', 'Bb', 'Db', 'Ab', 'Fm', 'Bbm', 'Fm', 'Fm7'], 
+        progression: [
+            // Intro pattern
+            { chord: 'Eb', beat: 1 },
+            { chord: 'Eb', beat: 1 },
+            { chord: 'Eb', beat: 1 },
+            { chord: 'Ab', beat: 1 },
+            { chord: 'Ab', beat: 1 },
+            { chord: 'Eb', beat: 1 },
+            { chord: 'Eb', beat: 1 },
+            { chord: 'Ab', beat: 1 },
+            { chord: 'Ab', beat: 1 },
+            { chord: 'Eb', beat: 1 },
+            { chord: 'Eb', beat: 1 },
+			{ chord: 'Db', beat: 2 },
+			{ chord: 'Db', beat: 1 },
+			{ chord: 'Eb', beat: 1 },
+			{ cue: 'Start Singing', beat: 2 },
+			
+        ]
+    }
+};
+
+// State variables
+let synth = null;
+let sustainSynth = null;
+let reverb = null;
+let chorus = null;
+let compressor = null;
+let isPlaying = false;
+let isCountingIn = false;
+let waitingForFirstChord = false;
+let currentChord = null;
+let nextChord = null;
+let metronomeInterval = null;
+let currentBeatIndex = 0;
+let barStartTime = null;
+let nextBeatTime = null;
+let isScheduling = false;
+let beatsPlayedInBar = 0;
+let chordStartBeatIndex = -1;
+let sustainedChord = null;
+let sustainInterval = null;
+let currentSong = null;
+let availableSongs = []; // Songs fetched from backend
+let isHost = false; // Track if user is host (for song selection control)
+let progressionIndex = 0;
+let songMode = false;
+let cueCountdown = 0;
+// Multi-user assignment state
+let selectedChords = [];
+let isChordSelectionMode = false;
+// Backend connection config
+const BACKEND_URL = 'https://music-chord-backend.onrender.com';
+let socket = null;
+let myUserId = null;
+let currentRoomId = null;
+let currentRoomPin = null;
+let myRole = null; // 'host' or 'guest'
+let connectedUsers = [];
+let songQueue = []; // Current song queue
+let autoAdvanceEnabled = true; // Auto-advance setting
+// Sync state
+let lastSyncTime = 0;
+let syncDriftMs = 0;
+let syncCorrectionCount = 0;
+let sustainReleaseTimeout = null;
+
+// Initialize synth based on instrument
+function initSynth(instrument) {
+    if (synth) synth.dispose();
+    if (sustainSynth) sustainSynth.dispose();
+    if (reverb) reverb.dispose();
+    if (chorus) chorus.dispose();
+    if (compressor) compressor.dispose();
+
+    // Create effects chain
+    reverb = new Tone.Reverb({
+        decay: 2.5,
+        wet: 0.3
+    }).toDestination();
+    
+    chorus = new Tone.Chorus({
+        frequency: 1.5,
+        delayTime: 3.5,
+        depth: 0.7,
+        wet: 0.3
+    }).connect(reverb);
+    
+    compressor = new Tone.Compressor({
+        threshold: -24,
+        ratio: 4,
+        attack: 0.003,
+        release: 0.1
+    }).connect(chorus);
+
+    switch(instrument) {
+        case 'guitar':
+            synth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { 
+                    type: 'triangle',
+                    partials: [1, 0.5, 0.3, 0.1]
+                },
+                envelope: { 
+                    attack: 0.005, 
+                    decay: 0.3, 
+                    sustain: 0.4, 
+                    release: 1.5 
+                },
+                volume: -8
+            }).connect(compressor);
+            
+            sustainSynth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { 
+                    type: 'triangle',
+                    partials: [1, 0.5, 0.3, 0.1]
+                },
+                envelope: { 
+                    attack: 0.005, 
+                    decay: 0.1, 
+                    sustain: 0.8, 
+                    release: 0.8 
+                },
+                volume: -8
+            }).connect(compressor);
+            break;
+            
+        case 'violin':
+            synth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { 
+                    type: 'sawtooth',
+                    partials: [1, 0.8, 0.6, 0.4, 0.2]
+                },
+                envelope: { 
+                    attack: 0.08, 
+                    decay: 0.2, 
+                    sustain: 0.7, 
+                    release: 0.6 
+                },
+                volume: -10
+            }).connect(compressor);
+            
+            sustainSynth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { 
+                    type: 'sawtooth',
+                    partials: [1, 0.8, 0.6, 0.4, 0.2]
+                },
+                envelope: { 
+                    attack: 0.08, 
+                    decay: 0.1, 
+                    sustain: 0.9, 
+                    release: 0.4 
+                },
+                volume: -10
+            }).connect(compressor);
+            break;
+            
+        case 'pads':
+            synth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { 
+                    type: 'sine',
+                    partials: [1, 0.7, 0.5, 0.3, 0.1]
+                },
+                envelope: { 
+                    attack: 0.4, 
+                    decay: 0.3, 
+                    sustain: 0.8, 
+                    release: 2.5 
+                },
+                volume: -6
+            }).connect(compressor);
+            
+            sustainSynth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { 
+                    type: 'sine',
+                    partials: [1, 0.7, 0.5, 0.3, 0.1]
+                },
+                envelope: { 
+                    attack: 0.3, 
+                    decay: 0.2, 
+                    sustain: 0.9, 
+                    release: 1.5 
+                },
+                volume: -6
+            }).connect(compressor);
+            break;
+    }
+}
+
+// Initialize checkboxes
+function updateCheckboxes() {
+    const division = parseInt(document.querySelector('input[name="division"]:checked').value);
+    const grid = document.getElementById('checkboxesGrid');
+    grid.innerHTML = '';
+
+    for (let i = 1; i <= division; i++) {
+        const item = document.createElement('div');
+        item.className = 'checkbox-item';
+        item.innerHTML = `
+            <input type="checkbox" id="beat${i}" checked>
+            <label for="beat${i}">${i}</label>
+        `;
+        grid.appendChild(item);
+    }
+}
+
+// Update visual metronome
+function updateMetronome(beatIndex) {
+    const items = document.querySelectorAll('.checkbox-item');
+    items.forEach((item, i) => {
+        if (i === beatIndex) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
+}
+
+// Update current chord display
+// Update current chord display
+/*
+function updateChordDisplay(chordName) {
+    document.getElementById('currentChordSmall').textContent = chordName || '--';
+}
+*/
+// Calculate total beats to display (entire song + 2 count-in bars)
+function getTotalBeatsToDisplay() {
+    if (!currentSong || !songMode) return 12;
+    
+    const beatsPerBar = getBeatsPerBar();
+    let totalBars = 2; // Start with 2 count-in bars
+    
+    // Check if new bar-based format
+    if (currentSong.progression && currentSong.progression[0] && currentSong.progression[0].bar !== undefined) {
+        // New format - get max bar number
+        const maxBar = Math.max(...currentSong.progression.map(b => b.bar || 0));
+        totalBars += maxBar;
+    } else {
+        // Old format - count progression items
+        currentSong.progression.forEach(item => {
+            if (typeof item === 'object' && (item.chord || item.cue || item.note)) {
+                totalBars++;
+            }
+        });
+    }
+    
+    return totalBars * beatsPerBar;
+}
+
+// Get beats per bar
+function getBeatsPerBar() {
+    const timeSignature = document.getElementById('timeSignature').value;
+    return parseInt(timeSignature.split('/')[0]);
+}
+
+function createBeatGrid() {
+    const totalBeats = getTotalBeatsToDisplay();
+    const beatsPerBar = getBeatsPerBar();
+    const beatGrid = document.getElementById('beatGrid');
+    const chordLabels = document.getElementById('chordLabels');
+    const cueLabels = document.getElementById('cueLabels');
+    
+    beatGrid.innerHTML = '';
+    chordLabels.innerHTML = '';
+    cueLabels.innerHTML = '';
+    
+    for (let i = 0; i < totalBeats; i++) {
+        // Create beat box
+        const beatBox = document.createElement('div');
+        beatBox.className = 'beat-box';
+        beatBox.id = `beat-box-${i}`;
+        
+        // Mark bar starts
+        if (i % beatsPerBar === 0) {
+            beatBox.classList.add('bar-start');
+        }
+        
+        // Add beat number
+        const beatNumber = document.createElement('div');
+        beatNumber.className = 'beat-number';
+        beatNumber.textContent = (i % beatsPerBar) + 1;
+        beatBox.appendChild(beatNumber);
+        
+        beatGrid.appendChild(beatBox);
+        
+        // Create chord label placeholder
+        const chordLabel = document.createElement('div');
+        chordLabel.className = 'chord-label empty';
+        chordLabel.id = `chord-label-${i}`;
+        
+        // Mark count-in bars (first 2 bars)
+        if (i < beatsPerBar * 2) {
+            chordLabel.textContent = 'COUNT';
+            chordLabel.className = 'chord-label count-in-label';
+            chordLabel.style.background = '#95d5a7';
+            chordLabel.style.fontSize = '12px';
+        }
+        
+        chordLabels.appendChild(chordLabel);
+        
+        // Create cue label placeholder
+        const cueLabel = document.createElement('div');
+        cueLabel.className = 'cue-label-box empty';
+        cueLabel.id = `cue-label-${i}`;
+        cueLabels.appendChild(cueLabel);
+    }
+}
+
+/*
+function updateBeatGrid() {
+    if (!currentSong || !songMode) return;
+    
+    const totalBeats = getTotalBeatsToDisplay();
+    const beatsPerBar = getBeatsPerBar();
+    const countInBeats = beatsPerBar * 2;
+    
+    // Clear all labels (except count-in labels)
+    for (let i = countInBeats; i < totalBeats; i++) {
+        const chordLabel = document.getElementById(`chord-label-${i}`);
+        const cueLabel = document.getElementById(`cue-label-${i}`);
+        if (chordLabel) {
+            chordLabel.textContent = '';
+            chordLabel.className = 'chord-label empty';
+        }
+        if (cueLabel) {
+            cueLabel.textContent = '';
+            cueLabel.className = 'cue-label-box empty';
+        }
+    }
+    
+    // Use flatProgression for display
+    const progression = currentSong.flatProgression || currentSong.progression;
+    
+    progression.forEach((item, index) => {
+        // Handle cues
+        if (item.type === 'cue' || (typeof item === 'object' && item.cue)) {
+            const cueText = item.value || item.cue;
+            const bar = item.bar || Math.floor(index / beatsPerBar);
+            const beat = item.beat || item.originalBeat || 1;
+            
+            const beatIndex = countInBeats + (bar * beatsPerBar) + (beat - 1);
+            
+            if (beatIndex < totalBeats) {
+                const cueLabel = document.getElementById(`cue-label-${beatIndex}`);
+                if (cueLabel) {
+                    cueLabel.textContent = cueText.charAt(0);
+                    cueLabel.className = 'cue-label-box';
+                    cueLabel.title = cueText;
+                }
+            }
+            return;
+        }
+        
+        // Handle chords and notes
+        if (item.type === 'chord' || item.type === 'note' || item.chord || item.note) {
+            const value = item.value || item.chord || item.note;
+            const bar = item.bar !== undefined ? item.bar : Math.floor(index / beatsPerBar);
+            const beat = item.beat || item.originalBeat || 1;
+            
+            // Calculate absolute beat index
+            // bar 1, beat 1 = countInBeats + 0
+            // bar 1, beat 2.5 = countInBeats + 1.5
+            const barOffset = (bar - 1) * beatsPerBar;
+            const beatOffset = beat - 1;
+            const absoluteBeatIndex = Math.floor(countInBeats + barOffset + beatOffset);
+            
+            if (absoluteBeatIndex < totalBeats && absoluteBeatIndex >= countInBeats) {
+                const label = document.getElementById(`chord-label-${absoluteBeatIndex}`);
+                if (label) {
+                    // If label already has content, append
+                    if (label.textContent && label.textContent !== '') {
+                        label.textContent += ' + ' + value;
+                    } else {
+                        label.textContent = value;
+                    }
+                    label.className = 'chord-label';
+                }
+            }
+        }
+    });
+}
+*/
+function updateBeatGrid() {
+    if (!currentSong || !songMode) return;
+    
+    const totalBeats = getTotalBeatsToDisplay();
+    const beatsPerBar = getBeatsPerBar();
+    const countInBeats = beatsPerBar * 2;
+    
+    // Clear all labels (except count-in labels)
+    for (let i = countInBeats; i < totalBeats; i++) {
+        const chordLabel = document.getElementById(`chord-label-${i}`);
+        const cueLabel = document.getElementById(`cue-label-${i}`);
+        if (chordLabel) {
+            chordLabel.textContent = '';
+            chordLabel.className = 'chord-label empty';
+        }
+        if (cueLabel) {
+            cueLabel.textContent = '';
+            cueLabel.className = 'cue-label-box empty';
+        }
+    }
+    
+    // Use flatProgression - create if it doesn't exist
+    let progression;
+    
+    if (currentSong.flatProgression) {
+        progression = currentSong.flatProgression;
+    } else if (currentSong.progression && currentSong.progression[0]?.bar !== undefined) {
+        // New format but not parsed yet - parse it now
+        console.log('Parsing progression on-the-fly in updateBeatGrid');
+        progression = parseProgression(currentSong.progression);
+        currentSong.flatProgression = progression; // Cache it
+    } else {
+        // Old format
+        progression = currentSong.progression;
+    }
+    
+    console.log('Using progression in updateBeatGrid:', progression);
+    
+    progression.forEach((item, index) => {
+        // Handle cues
+        if (item.type === 'cue' || (typeof item === 'object' && item.cue)) {
+            const cueText = item.value || item.cue;
+            const bar = item.bar || Math.floor(index / beatsPerBar);
+            const beat = item.beat || item.originalBeat || 1;
+            
+            const beatIndex = countInBeats + ((bar - 1) * beatsPerBar) + (beat - 1);
+            
+            if (beatIndex < totalBeats && beatIndex >= countInBeats) {
+                const cueLabel = document.getElementById(`cue-label-${beatIndex}`);
+                if (cueLabel) {
+                    cueLabel.textContent = cueText.charAt(0);
+                    cueLabel.className = 'cue-label-box';
+                    cueLabel.title = cueText;
+                }
+            }
+            return;
+        }
+        
+        // Handle chords and notes
+        if (item.type === 'chord' || item.type === 'note' || item.chord || item.note) {
+            const value = item.value || item.chord || item.note;
+            const bar = item.bar !== undefined ? item.bar : Math.floor(index / beatsPerBar);
+            const beat = item.beat || item.originalBeat || 1;
+            
+            // Calculate absolute beat index
+            // bar 1, beat 1 = countInBeats + 0
+            // bar 1, beat 2.5 = countInBeats + 1.5
+            const barOffset = (bar - 1) * beatsPerBar;
+            const beatOffset = beat - 1;
+            const absoluteBeatIndex = Math.floor(countInBeats + barOffset + beatOffset);
+            
+            if (absoluteBeatIndex < totalBeats && absoluteBeatIndex >= countInBeats) {
+                const label = document.getElementById(`chord-label-${absoluteBeatIndex}`);
+                if (label) {
+                    // If label already has content, append
+                    if (label.textContent && label.textContent !== '') {
+                        label.textContent += ' + ' + value;
+                    } else {
+                        label.textContent = value;
+                    }
+                    label.className = 'chord-label';
+                }
+            }
+        }
+    });
+}
+
+/*
+// Update beat grid with personalized highlighting
+function updateBeatGridPersonalized() {
+    if (!currentSong || !songMode) return;
+    
+    const totalBeats = getTotalBeatsToDisplay();
+    const beatsPerBar = getBeatsPerBar();
+    const countInBeats = beatsPerBar * 2;
+    
+    // Clear all labels
+    for (let i = countInBeats; i < totalBeats; i++) {
+        const chordLabel = document.getElementById(`chord-label-${i}`);
+        const cueLabel = document.getElementById(`cue-label-${i}`);
+        if (chordLabel) {
+            chordLabel.textContent = '';
+            chordLabel.className = 'chord-label empty';
+        }
+        if (cueLabel) {
+            cueLabel.textContent = '';
+            cueLabel.className = 'cue-label-box empty';
+        }
+    }
+    
+    // Use flatProgression
+    const progression = currentSong.flatProgression || currentSong.progression;
+    
+    progression.forEach((item, index) => {
+        // Handle cues
+        if (item.type === 'cue' || (typeof item === 'object' && item.cue)) {
+            const cueText = item.value || item.cue;
+            const bar = item.bar || Math.floor(index / beatsPerBar);
+            const beat = item.beat || item.originalBeat || 1;
+            
+            const beatIndex = countInBeats + ((bar - 1) * beatsPerBar) + (beat - 1);
+            
+            if (beatIndex < totalBeats && beatIndex >= countInBeats) {
+                const cueLabel = document.getElementById(`cue-label-${beatIndex}`);
+                if (cueLabel) {
+                    cueLabel.textContent = cueText.charAt(0);
+                    cueLabel.className = 'cue-label-box';
+                    cueLabel.title = cueText;
+                }
+            }
+            return;
+        }
+        
+        // Handle chords and notes
+        if (item.type === 'chord' || item.type === 'note' || item.chord || item.note) {
+            const value = item.value || item.chord || item.note;
+            const type = item.type || (item.chord ? 'chord' : 'note');
+            const bar = item.bar !== undefined ? item.bar : Math.floor(index / beatsPerBar);
+            const beat = item.beat || item.originalBeat || 1;
+            
+            const barOffset = (bar - 1) * beatsPerBar;
+            const beatOffset = beat - 1;
+            const absoluteBeatIndex = Math.floor(countInBeats + barOffset + beatOffset);
+            
+            if (absoluteBeatIndex < totalBeats && absoluteBeatIndex >= countInBeats) {
+                const label = document.getElementById(`chord-label-${absoluteBeatIndex}`);
+                if (label) {
+                    // Check if this is user's selection
+                    const selectionKey = `${type}:${value}`;
+                    const isMyItem = selectedChords.includes(selectionKey);
+                    
+                    // Build display text
+                    let displayText = label.textContent || '';
+                    if (displayText && displayText !== '') {
+                        displayText += ' + ' + value;
+                    } else {
+                        displayText = value;
+                    }
+                    
+                    label.textContent = displayText;
+                    
+                    // Set class based on ownership
+                    if (isMyItem) {
+                        label.className = 'chord-label my-chord';
+                    } else if (label.className !== 'chord-label my-chord') {
+                        // Only set as other-chord if not already marked as my-chord
+                        label.className = 'chord-label other-chord';
+                    }
+                }
+            }
+        }
+    });
+}
+*/
+function updateBeatGridPersonalized() {
+	//console.log('In updateBeatGridPersonalized. Current Song: ', currentSong, 'Song Mode: ', songMode);
+    if (!currentSong || !songMode) return;
+    
+    const totalBeats = getTotalBeatsToDisplay();
+    const beatsPerBar = getBeatsPerBar();
+    const countInBeats = beatsPerBar * 2;
+    
+    // Clear all labels
+    for (let i = countInBeats; i < totalBeats; i++) {
+        const chordLabel = document.getElementById(`chord-label-${i}`);
+        const cueLabel = document.getElementById(`cue-label-${i}`);
+        if (chordLabel) {
+            chordLabel.textContent = '';
+            chordLabel.className = 'chord-label empty';
+        }
+        if (cueLabel) {
+            cueLabel.textContent = '';
+            cueLabel.className = 'cue-label-box empty';
+        }
+    }
+    
+    // Use flatProgression
+    // Use flatProgression - create if it doesn't exist
+    let progression;
+    
+    if (currentSong.flatProgression) {
+        progression = currentSong.flatProgression;
+    } else if (currentSong.progression && currentSong.progression[0]?.bar !== undefined) {
+        // New format but not parsed yet - parse it now
+        console.log('Parsing progression on-the-fly in updateBeatGridPersonalized');
+        progression = parseProgression(currentSong.progression);
+        currentSong.flatProgression = progression; // Cache it
+    } else {
+        // Old format
+        progression = currentSong.progression;
+    }
+    
+    console.log('Current Song:', currentSong);
+    console.log('Using progression:', progression);
+    
+    progression.forEach((item, index) => {
+		
+        // Handle cues
+        if (item.type === 'cue' || (typeof item === 'object' && item.cue)) {
+            const cueText = item.value || item.cue;
+            const bar = item.bar || Math.floor(index / beatsPerBar);
+            const beat = item.beat || item.originalBeat || 1;
+            
+            const beatIndex = countInBeats + ((bar - 1) * beatsPerBar) + (beat - 1);
+            
+            if (beatIndex < totalBeats && beatIndex >= countInBeats) {
+                const cueLabel = document.getElementById(`cue-label-${beatIndex}`);
+                if (cueLabel) {
+                    cueLabel.textContent = cueText.charAt(0);
+                    cueLabel.className = 'cue-label-box';
+                    cueLabel.title = cueText;
+                }
+            }
+            return;
+        }
+        
+        // Handle chords and notes
+        if (item.type === 'chord' || item.type === 'note' || item.chord || item.note) {
+			//console.log('Item Type: ', item.type);
+            const value = item.value || item.chord || item.note;
+            const type = item.type || (item.chord ? 'chord' : 'note');
+            const bar = item.bar !== undefined ? item.bar : Math.floor(index / beatsPerBar);
+            const beat = item.beat || item.originalBeat || 1;
+            
+            const barOffset = (bar - 1) * beatsPerBar;
+            const beatOffset = beat - 1;
+            const absoluteBeatIndex = Math.floor(countInBeats + barOffset + beatOffset);
+            //console.log('Absolute Beat Index: ', absoluteBeatIndex, ' Total Beats: ', totalBeats, ' Count In Beats: ', countInBeats);
+            if (absoluteBeatIndex < totalBeats && absoluteBeatIndex >= countInBeats) {
+                const label = document.getElementById(`chord-label-${absoluteBeatIndex}`);
+				//console.log('Label: ', label);
+                if (label) {
+                    // Check if this is user's selection
+                    const selectionKey = `${type}:${value}`;
+                    const isMyItem = selectedChords.includes(selectionKey);
+                    
+                    // Build display text
+                    let displayText = label.textContent || '';
+                    if (displayText && displayText !== '') {
+                        displayText += ' + ' + value;
+                    } else {
+                        displayText = value;
+                    }
+                    
+                    label.textContent = displayText;
+                    
+                    // Set class based on ownership
+                    if (isMyItem) {
+                        label.className = 'chord-label my-chord';
+                    } else if (label.className !== 'chord-label my-chord') {
+                        // Only set as other-chord if not already marked as my-chord
+                        label.className = 'chord-label other-chord';
+                    }
+                }
+            }
+        }
+    });
+}
+
+
+function highlightBeatInGrid(beatNumber) {
+    //console.log('highlightBeatInGrid called with beatNumber:', beatNumber, 'currentBeatIndex:', currentBeatIndex); // ADD THIS
+
+    const totalBeats = getTotalBeatsToDisplay();
+    const beatsPerBar = getBeatsPerBar();
+    
+    // Calculate absolute beat position based on current beat index from metronome
+    const absoluteBeatIndex = currentBeatIndex;
+    //console.log('absoluteBeatIndex:', absoluteBeatIndex, 'totalBeats:', totalBeats); // ADD THIS
+    
+    // Clear all active states
+    for (let i = 0; i < totalBeats; i++) {
+        const box = document.getElementById(`beat-box-${i}`);
+        if (box) {
+            box.classList.remove('active');
+        }
+        
+        // Mark cues as passed
+        if (i < absoluteBeatIndex) {
+            const cueLabel = document.getElementById(`cue-label-${i}`);
+            if (cueLabel && !cueLabel.classList.contains('empty')) {
+                cueLabel.classList.add('passed');
+            }
+        }
+    }
+    
+    // Highlight current beat
+    const currentBox = document.getElementById(`beat-box-${absoluteBeatIndex}`);
+    if (currentBox) {
+        currentBox.classList.add('active');
+        
+        // Auto-scroll: keep current beat visible and centered
+        const container = document.getElementById('beatGridContainer');
+        const containerWidth = container.clientWidth;
+        
+        // Get actual dimensions (responsive)
+        const firstBeatBox = document.getElementById('beat-box-0');
+        const secondBeatBox = document.getElementById('beat-box-1');
+        if (!firstBeatBox || !secondBeatBox) return;
+        
+        const beatBoxWidth = firstBeatBox.offsetWidth;
+        
+        // Calculate actual gap from the difference between two boxes
+        const firstBoxRight = firstBeatBox.offsetLeft + firstBeatBox.offsetWidth;
+        const secondBoxLeft = secondBeatBox.offsetLeft;
+        const beatBoxGap = secondBoxLeft - firstBoxRight;
+        
+        const totalBeatWidth = beatBoxWidth + beatBoxGap;
+        
+        // Calculate the position of the current beat box
+        const beatPosition = absoluteBeatIndex * totalBeatWidth;
+        
+        // Calculate how much we should offset to center the beat
+        const centerOffset = containerWidth / 2 - (beatBoxWidth / 2);
+        
+        // Target scroll position (beat in center of viewport)
+        const targetScroll = beatPosition - centerOffset;
+        
+        // Only scroll if we're past the first bar
+        if (absoluteBeatIndex >= beatsPerBar) {
+            // Clamp scroll to valid range
+            const maxScroll = container.scrollWidth - containerWidth;
+            const clampedScroll = Math.max(0, Math.min(targetScroll, maxScroll));
+            
+            // Smooth scroll
+            container.scrollTo({
+                left: clampedScroll,
+                behavior: 'smooth'
+            });
+        } else {
+            // First bar - no scroll
+            container.scrollLeft = 0;
+        }
+    }
+	
+	// Update song progress indicator
+	if (songMode && currentSong) {
+		const beatsPerBar = getBeatsPerBar();
+		const currentBar = Math.floor(absoluteBeatIndex / beatsPerBar);
+		const totalBars = Math.floor(totalBeats / beatsPerBar);
+		
+		// Update progress text
+		const progressText = document.getElementById('progressText');
+		if (progressText) {
+			progressText.textContent = `Bar ${currentBar} / ${totalBars}`;
+		}
+		
+		// Update progress bar
+		const progressFill = document.getElementById('progressFill');
+		if (progressFill) {
+			const progressPercent = (absoluteBeatIndex / totalBeats) * 100;
+			progressFill.style.width = `${Math.min(progressPercent, 100)}%`;
+		}
+	}
+}
+
+
+// Show count-in display
+function showCountIn(count) {
+    const display = document.getElementById('countInDisplay');
+    display.textContent = count;
+    display.classList.remove('hidden');
+    display.style.animation = 'none';
+    setTimeout(() => {
+        display.style.animation = 'countPulse 0.5s ease';
+    }, 10);
+}
+
+// Hide count-in display
+function hideCountIn() {
+    document.getElementById('countInDisplay').classList.add('hidden');
+}
+
+// Show song cue
+function showSongCue(text, countdown) {
+    const cueElement = document.getElementById('songCue');
+    const cueText = document.getElementById('cueText');
+    const cueCountdownEl = document.getElementById('cueCountdown');
+    
+    cueText.textContent = text;
+    cueElement.classList.remove('hidden');
+    
+    if (countdown) {
+        const timeSignature = document.getElementById('timeSignature').value;
+        const beatsPerBar = parseInt(timeSignature.split('/')[0]);
+        cueCountdown = beatsPerBar;
+        cueCountdownEl.textContent = cueCountdown;
+    } else {
+        cueCountdownEl.textContent = '';
+    }
+}
+
+function hideSongCue() {
+    document.getElementById('songCue').classList.add('hidden');
+    cueCountdown = 0;
+}
+
+function updateCueCountdown() {
+    if (cueCountdown > 0) {
+        const cueCountdownEl = document.getElementById('cueCountdown');
+        
+        if (cueCountdown === 1) {
+            cueCountdownEl.textContent = 'NOW!';
+        } else {
+            cueCountdownEl.textContent = cueCountdown - 1;
+        }
+        
+        cueCountdown--;
+        
+        if (cueCountdown === 0) {
+            setTimeout(() => hideSongCue(), 500);
+        }
+    }
+}
+
+// Display chord progression
+// Display chord progression
+function displayProgression() {
+    if (!currentSong) return;
+    
+    const display = document.getElementById('progressionDisplay');
+    
+    if (progressionIndex >= currentSong.progression.length) {
+        document.getElementById('currentChordSmall').textContent = 'Complete! 🎉';
+        return;
+    }
+    
+    createBeatGrid();
+    
+    // Use personalized beat grid if chords are selected
+    if (selectedChords.length > 0) {
+        updateBeatGridPersonalized();
+    } else {
+        updateBeatGrid();
+    }
+    
+    display.classList.remove('hidden');
+}
+
+// Load song from backend
+async function loadSong(songKey) {
+    if (!songKey) {
+        currentSong = null;
+        songMode = false;
+        progressionIndex = 0;
+        selectedChords = [];
+        isChordSelectionMode = false;
+        document.getElementById('chordSelectionSection').style.display = 'none';
+        document.getElementById('progressionDisplay').classList.add('hidden');
+        return;
+    }
+    
+    try {
+        // Fetch full song data from backend
+        const response = await fetch(`${BACKEND_URL}/api/songs/${songKey}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            currentSong = data.song;
+            
+            // Parse new bar-based format if present
+            if (currentSong.progression && currentSong.progression.length > 0) {
+                if (currentSong.progression[0].bar !== undefined) {
+                    // New format - parse it
+                    currentSong.flatProgression = parseProgression(currentSong.progression);
+                } else {
+                    // Old format - use as is
+                    currentSong.flatProgression = currentSong.progression;
+                }
+            }
+            
+            songMode = true;
+            progressionIndex = 0;
+            selectedChords = [];
+            
+            console.log('Loaded song from backend:', currentSong);
+            
+            // Update UI with song data
+            document.getElementById('bpm').value = currentSong.bpm;
+            document.getElementById('timeSignature').value = currentSong.timeSignature;
+            
+            // If user is host in a room, broadcast song selection
+            if (myRole === 'host' && socket && socket.connected && currentRoomId) {
+                socket.emit('select_song', { songId: songKey });
+                console.log('Host selected song, broadcasting to room');
+                document.getElementById('currentSongName').textContent = currentSong.name;
+
+            }
+            
+            // Show chord selection UI
+            showChordSelection(currentSong.chords, currentSong.notes);
+            
+            // Hide progression display until ready
+            document.getElementById('progressionDisplay').classList.add('hidden');
+            
+        } else {
+            showToast('Failed to load song from server', 'error', 'Load Error');
+        }
+        
+    } catch (error) {
+        console.error('Error loading song:', error);
+        showToast('Failed to load song from server', 'error', 'Connection Error');
+    }
+}
+
+// Parse new bar-based progression format
+function parseProgression(progression) {
+    const flatProgression = [];
+    
+    progression.forEach(barData => {
+        if (!barData.events) {
+            // Old format - keep for backward compatibility
+            flatProgression.push(barData);
+            return;
+        }
+        
+        // New format - flatten bar.events into beat positions
+        barData.events.forEach(event => {
+            flatProgression.push({
+                ...event,
+                bar: barData.bar,
+                originalBeat: event.beat  // Keep for reference
+            });
+        });
+    });
+    
+    return flatProgression;
+}
+
+// Display chord buttons based on song
+function displayChordButtons(chordList) {
+    let buttonContainer = document.querySelector('.chord-buttons');
+    buttonContainer.innerHTML = '';
+    
+    chordList.forEach(chordName => {
+        let button = document.createElement('button');
+        button.className = 'chord-btn';
+        button.setAttribute('data-chord', chordName);
+        button.textContent = chordName;
+        
+		// Parse selection format: "chord:E" or "note:E3"
+        const [type, value] = chordName.includes(':') 
+            ? chordName.split(':') 
+            : ['chord', chordName];
+			
+        // Add all event listeners
+        button.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            handleChordClick(value);
+        });
+        
+        button.addEventListener('mouseup', (e) => {
+            e.preventDefault();
+            stopSustain(value);
+        });
+        
+        button.addEventListener('mouseleave', (e) => {
+            stopSustain(value);
+        });
+        
+        button.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleChordClick(value);
+        });
+        
+        button.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            stopSustain(value);
+        });
+        
+        button.addEventListener('touchcancel', (e) => {
+            e.preventDefault();
+            stopSustain(value);
+        });
+        
+        buttonContainer.appendChild(button);
+    });
+}
+
+// Helper function for selection changes
+function handleSelectionChange(e, value, type, item) {
+    const selectionKey = `${type}:${value}`;
+    
+    if (e.target.checked) {
+        if (selectedChords.length < 8) {
+            selectedChords.push(selectionKey);
+            item.classList.add('selected');
+        } else {
+            e.target.checked = false;
+            showToast('Maximum 8 chords/notes', 'warning', 'Selection Limit');
+        }
+    } else {
+        selectedChords = selectedChords.filter(c => c !== selectionKey);
+        item.classList.remove('selected');
+    }
+    
+    updateReadyButton();
+}
+
+// Show chord selection UI
+// In showChordSelection() function
+function showChordSelection(chordList, noteList) {
+    isChordSelectionMode = true;
+    const section = document.getElementById('chordSelectionSection');
+    const grid = document.getElementById('chordSelectionGrid');
+    
+    section.style.display = 'block';
+    grid.innerHTML = '';
+    
+    // Add section header if both chords and notes exist
+    if (chordList && chordList.length > 0) {
+        const chordHeader = document.createElement('div');
+        chordHeader.className = 'selection-header';
+        chordHeader.textContent = 'Chords:';
+        grid.appendChild(chordHeader);
+        
+        chordList.forEach(chordName => {
+            const item = document.createElement('div');
+            item.className = 'chord-select-item';
+            item.innerHTML = `
+                <input type="checkbox" id="select-chord-${chordName}" value="${chordName}" data-type="chord">
+                <label for="select-chord-${chordName}">${chordName}</label>
+            `;
+            
+            const checkbox = item.querySelector('input');
+            checkbox.addEventListener('change', (e) => {
+                handleSelectionChange(e, chordName, 'chord', item);
+            });
+            
+            grid.appendChild(item);
+        });
+    }
+    
+    // Add notes section
+    if (noteList && noteList.length > 0) {
+        const noteHeader = document.createElement('div');
+        noteHeader.className = 'selection-header';
+        noteHeader.textContent = 'Notes:';
+        grid.appendChild(noteHeader);
+        
+        noteList.forEach(noteName => {
+            const item = document.createElement('div');
+            item.className = 'chord-select-item'; // Reuse same styling
+            item.innerHTML = `
+                <input type="checkbox" id="select-${noteName}" value="${noteName}">
+                <label for="select-${noteName}">${noteName}</label>
+            `;
+            
+            const checkbox = item.querySelector('input');
+            checkbox.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    if (selectedChords.length < 8) { // Allow more selections for notes
+                        selectedChords.push(noteName);
+                        item.classList.add('selected');
+                    } else {
+                        e.target.checked = false;
+                        showToast('Maximum 8 chords/notes', 'warning');
+                    }
+                } else {
+                    selectedChords = selectedChords.filter(c => c !== noteName);
+                    item.classList.remove('selected');
+                }
+                updateReadyButton();
+            });
+            
+            grid.appendChild(item);
+        });
+    }
+}
+
+// Update ready button state
+function updateReadyButton() {
+    const readyBtn = document.getElementById('readyBtn');
+    readyBtn.disabled = selectedChords.length === 0;
+}
+
+// Hide chord selection and show personalized view
+function confirmChordSelection() {
+    isChordSelectionMode = false;
+    document.getElementById('chordSelectionSection').style.display = 'none';
+    
+    // Ensure flatProgression exists before displaying
+    if (currentSong && !currentSong.flatProgression && currentSong.progression) {
+        if (currentSong.progression[0]?.bar !== undefined) {
+            //console.log('Creating flatProgression in confirmChordSelection');
+            currentSong.flatProgression = parseProgression(currentSong.progression);
+        } else {
+            currentSong.flatProgression = currentSong.progression;
+        }
+    }
+    
+    // Display only selected chord buttons
+    displayChordButtons(selectedChords);
+    
+    // Update beat grid to highlight selected chords
+    updateBeatGridPersonalized();
+    
+    // If in a multi-user room, notify backend of chord selection
+    if (socket && socket.connected && currentRoomId && myUserId) {
+        socket.emit('update_chords', {
+            userId: myUserId,
+            chords: selectedChords
+        });
+        console.log('Sent chord selection to backend:', selectedChords);
+    }
+}
+
+// ============================================
+// BACKEND CONNECTION FUNCTIONS
+// ============================================
+
+// Generate a unique user ID
+function generateUserId() {
+    return 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+}
+
+// Fetch available songs from backend
+async function fetchSongsFromBackend() {
+    try {
+		//showLoading('Loading songs...');
+        
+		const response = await fetch(`${BACKEND_URL}/api/songs`);
+        const data = await response.json();
+        
+        if (data.success) {
+            availableSongs = data.songs;
+            console.log('Fetched songs from backend:', availableSongs);
+            populateSongDropdown(availableSongs);
+            populateQueueSongDropdown(availableSongs); // ADD THIS LINE
+			hideLoading();
+        } else {
+            console.error('Failed to fetch songs');
+			hideLoading();
+        }
+    } catch (error) {
+        console.error('Error fetching songs:', error);
+		hideLoading();
+        // Fallback: use local songs if backend fails
+        console.log('Using fallback: songs will be loaded from backend when available');
+    }
+}
+
+// Populate song dropdown with fetched songs
+function populateSongDropdown(songs) {
+    const songSelect = document.getElementById('songSelect');
+    
+    // Clear existing options except the first "Select a Song"
+    songSelect.innerHTML = '<option value="">-- Select a Song --</option>';
+    
+    // Add songs from backend
+    songs.forEach(song => {
+        const option = document.createElement('option');
+        option.value = song.id;
+        option.textContent = song.name;
+        songSelect.appendChild(option);
+    });
+}
+
+// Populate queue song dropdown (for adding to queue)
+function populateQueueSongDropdown(songs) {
+    const queueSongSelect = document.getElementById('queueSongSelect');
+    
+    // Clear existing options except the first
+    queueSongSelect.innerHTML = '<option value="">-- Add Song to Queue --</option>';
+    
+    // Add songs from backend
+    songs.forEach(song => {
+        const option = document.createElement('option');
+        option.value = song.id;
+        option.textContent = song.name;
+        queueSongSelect.appendChild(option);
+    });
+}
+
+// Update queue display
+function updateQueueDisplay(queue) {
+    songQueue = queue;
+    const queueList = document.getElementById('queueList');
+    const nextSongBtn = document.getElementById('nextSongBtn');
+    
+    // Clear the list
+    queueList.innerHTML = '';
+    
+    if (queue.length === 0) {
+        // Create and show empty message
+        const queueEmpty = document.createElement('div');
+        queueEmpty.className = 'queue-empty';
+        queueEmpty.id = 'queueEmpty';
+        queueEmpty.textContent = 'Queue is empty';
+        queueList.appendChild(queueEmpty);
+        
+        if (myRole === 'host') {
+            nextSongBtn.classList.add('hidden');
+        }
+        return;
+    }
+    
+    queue.forEach((songId, index) => {
+        const song = availableSongs.find(s => s.id === songId);
+        if (!song) return;
+        
+        const queueItem = document.createElement('div');
+        queueItem.className = 'queue-item';
+        queueItem.dataset.songId = songId;
+        
+        const actionsHtml = myRole === 'host' 
+            ? `<div class="queue-item-actions">
+                ${index > 0 ? `<button class="queue-btn move-up-btn" onclick='moveQueueItem(${index}, "up")'>↑</button>` : ''}
+                ${index < queue.length - 1 ? `<button class="queue-btn move-down-btn" onclick='moveQueueItem(${index}, "down")'>↓</button>` : ''}
+                <button class="queue-btn remove-queue-btn" onclick="removeFromQueue(${index})">✕</button>
+               </div>`
+            : '';
+        
+        queueItem.innerHTML = `
+            <div class="queue-item-info">
+                <div class="queue-item-number">${index + 1}</div>
+                <div class="queue-item-name">${song.name}</div>
+            </div>
+            ${actionsHtml}
+        `;
+        
+        queueList.appendChild(queueItem);
+    });
+    
+    // Show next song button for host if queue has items
+    if (myRole === 'host' && queue.length > 0) {
+        nextSongBtn.classList.remove('hidden');
+    } else if (myRole === 'host') {
+        nextSongBtn.classList.add('hidden');
+    }
+}
+
+// Add song to queue
+function addToQueue() {
+    const queueSongSelect = document.getElementById('queueSongSelect');
+    const songId = queueSongSelect.value;
+    
+    if (!songId) {
+        showToast('Please select a song to add', 'warning', 'No Song Selected');
+        return;
+    }
+    
+    if (socket && socket.connected && currentRoomId) {
+        socket.emit('add_song', { songId });
+        console.log('Adding song to queue:', songId);
+        
+        // Reset dropdown
+        queueSongSelect.value = '';
+    }
+}
+
+// Remove song from queue
+function removeFromQueue(index) {
+    if (songQueue.length <= index) return;
+    
+    const songId = songQueue[index];
+    
+    if (socket && socket.connected && currentRoomId) {
+        socket.emit('remove_song', { songId });
+        console.log('Removing song from queue:', songId);
+    }
+}
+
+// Move queue item up or down
+function moveQueueItem(index, direction) {
+    const newQueue = [...songQueue];
+    
+    if (direction === 'up' && index > 0) {
+        [newQueue[index - 1], newQueue[index]] = [newQueue[index], newQueue[index - 1]];
+    } else if (direction === 'down' && index < newQueue.length - 1) {
+        [newQueue[index], newQueue[index + 1]] = [newQueue[index + 1], newQueue[index]];
+    } else {
+        return;
+    }
+    
+    if (socket && socket.connected && currentRoomId) {
+        socket.emit('reorder_queue', { newQueue });
+        console.log('Reordering queue:', newQueue);
+    }
+}
+
+// Skip to next song in queue
+function skipToNextSong() {
+    if (songQueue.length === 0) {
+        showToast('No songs in queue', 'warning', 'Queue Empty');
+        return;
+    }
+    
+    if (confirm('Skip to next song? Current song will stop.')) {
+        if (socket && socket.connected && currentRoomId) {
+            socket.emit('next_song');
+            console.log('Skipping to next song');
+        }
+    }
+}
+
+// Show song complete message
+function showSongCompleteMessage(message) {
+    // Remove any existing message
+    const existing = document.querySelector('.song-complete-message');
+    if (existing) {
+        existing.remove();
+    }
+    
+    // Create message element
+    const messageEl = document.createElement('div');
+    messageEl.className = 'song-complete-message';
+    messageEl.innerHTML = message;
+    document.body.appendChild(messageEl);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        messageEl.style.transition = 'opacity 0.5s';
+        messageEl.style.opacity = '0';
+        setTimeout(() => messageEl.remove(), 500);
+    }, 3000);
+}
+
+// Show sync indicator
+function showSyncIndicator(message) {
+    // Remove any existing indicator
+    const existing = document.querySelector('.sync-indicator');
+    if (existing) {
+        existing.remove();
+    }
+    
+    // Create indicator element
+    const indicator = document.createElement('div');
+    indicator.className = 'sync-indicator';
+    indicator.textContent = message;
+    document.body.appendChild(indicator);
+    
+    // Auto-remove after 2 seconds
+    setTimeout(() => {
+        indicator.style.transition = 'opacity 0.3s';
+        indicator.style.opacity = '0';
+        setTimeout(() => indicator.remove(), 300);
+    }, 2000);
+}
+
+// Toast notification system
+function showToast(message, type = 'info', title = '', duration = 4000) {
+    const container = document.getElementById('toastContainer');
+    
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    // Icon based on type
+    const icons = {
+        success: '✓',
+        error: '✕',
+        info: 'ℹ',
+        warning: '⚠'
+    };
+    
+    const icon = icons[type] || icons.info;
+    
+    // Auto-generate title if not provided
+    if (!title) {
+        const titles = {
+            success: 'Success',
+            error: 'Error',
+            info: 'Info',
+            warning: 'Warning'
+        };
+        title = titles[type] || 'Notification';
+    }
+    
+    toast.innerHTML = `
+        <div class="toast-icon">${icon}</div>
+        <div class="toast-content">
+            <div class="toast-title">${title}</div>
+            <div class="toast-message">${message}</div>
+        </div>
+        <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+    `;
+    
+    container.appendChild(toast);
+    
+    // Auto-remove after duration
+    if (duration > 0) {
+        setTimeout(() => {
+            toast.classList.add('removing');
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+    
+    return toast;
+}
+
+// Show loading overlay
+// Show loading overlay
+function showLoading(text = 'Loading...') {
+    const overlay = document.getElementById('loadingOverlay');
+    const loadingText = document.getElementById('loadingText');
+    
+    if (!overlay || !loadingText) {
+        console.log('Loading overlay not found, skipping loading indicator');
+        return;
+    }
+    
+    loadingText.textContent = text;
+    overlay.classList.remove('hidden');
+}
+
+// Hide loading overlay
+function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    
+    if (!overlay) {
+        console.log('Loading overlay not found, skipping');
+        return;
+    }
+    
+    overlay.classList.add('hidden');
+}
+
+
+// Connect to backend via Socket.io
+function connectToBackend() {
+    if (socket && socket.connected) {
+        console.log('Already connected to backend');
+        return;
+    }
+    
+    socket = io(BACKEND_URL, {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000
+    });
+    
+    // Connection established
+    socket.on('connect', () => {
+        console.log('Connected to backend:', socket.id);
+    });
+    
+    // Connection error
+    socket.on('connect_error', (error) => {
+        console.error('Connection error:', error);
+        alert('Failed to connect to server. Please try again.');
+    });
+    
+    // Disconnected
+    socket.on('disconnect', (reason) => {
+        console.log('Disconnected from backend:', reason);
+        if (reason === 'io server disconnect') {
+            // Server disconnected us, try to reconnect
+            socket.connect();
+        }
+    });
+    
+    // Setup event listeners
+    setupSocketListeners();
+}
+
+// Setup all socket event listeners
+function setupSocketListeners() {
+    if (!socket) return;
+    
+    // Room joined successfully
+    socket.on('room_joined', (data) => {
+        console.log('Room joined:', data);
+        currentRoomId = data.room.roomId;
+        currentRoomPin = data.room.pin;
+        connectedUsers = data.room.users;
+        
+        // Update UI
+        showRoomInfo();
+        updateUserList(data.room.users);
+		
+		// Update UI
+        showRoomInfo();
+        updateUserList(data.room.users);
+        
+        // ADD THESE LINES:
+        // Update queue if it exists
+        if (data.room.songQueue) {
+            updateQueueDisplay(data.room.songQueue);
+        }
+        
+        // Update current song if it exists
+        if (data.room.currentSong) {
+            document.getElementById('currentSongName').textContent = data.room.currentSong.name;
+        }
+        if (typeof data.room.autoAdvance !== 'undefined') {
+            autoAdvanceEnabled = data.room.autoAdvance;
+            document.getElementById('autoAdvanceCheckbox').checked = data.room.autoAdvance;
+        }
+		showToast(`PIN: ${currentRoomPin}`, 'success', 'Joined Room!');
+    });
+    
+    // User joined the room
+    socket.on('user_joined', (data) => {
+        console.log('User joined:', data.user);
+        
+        // Show notification
+        if (data.user.userId !== myUserId) {
+            showToast(`${data.user.name} joined`, 'info', 'New Player', 3000);
+        }
+    });
+    
+    // User left the room
+    socket.on('user_left', (data) => {
+        console.log('User left:', data.userId);
+        showToast('A player left the room', 'info', 'Player Left', 3000);
+    });
+    
+    // User list updated
+    socket.on('user_list_updated', (data) => {
+        console.log('User list updated:', data.users);
+        connectedUsers = data.users;
+        updateUserList(data.users);
+    });
+	
+	// Song selected by host
+    socket.on('song_selected', (data) => {
+        console.log('Host selected song:', data.song.name);
+        
+        if (myRole === 'guest') {
+            // Guest receives song from host
+            currentSong = data.song;
+            songMode = true;
+            progressionIndex = 0;
+            selectedChords = [];
+            
+            // Update dropdown to show selected song
+            document.getElementById('songSelect').value = data.songId;
+            
+            // Disable song selection for guests
+            document.getElementById('songSelect').disabled = true;
+            
+            // Update BPM and time signature from song
+            document.getElementById('bpm').value = currentSong.bpm;
+            document.getElementById('timeSignature').value = currentSong.timeSignature;
+            
+            // Disable BPM and time signature for guests
+            document.getElementById('bpm').disabled = true;
+            document.getElementById('timeSignature').disabled = true;
+            
+            document.getElementById('currentSongName').textContent = currentSong.name;
+
+            console.log('Guest: Song loaded from host -', currentSong.name);
+            
+            // Show chord selection UI with both chords and notes
+            showChordSelection(currentSong.chords, currentSong.notes);
+            
+            // Show notification
+            showToast(`Get ready to play!`, 'info', `Song: ${currentSong.name}`);
+        }
+    });
+	
+	// Song queue updated
+    socket.on('song_queue_updated', (data) => {
+        console.log('Song queue updated:', data.songQueue);
+        updateQueueDisplay(data.songQueue);
+    });
+    
+    // Song changed (next song loaded)
+    // Song changed (next song loaded)
+    socket.on('song_changed', (data) => {
+        console.log('Song changed to:', data.song.name);
+        
+        // Stop current playback
+        if (isPlaying) {
+            stopMetronome();
+        }
+		
+		// Re-enable scheduling for new song
+        isScheduling = false; // Reset flag
+        currentBeatIndex = 0; // Reset beat position
+        
+        // Load new song
+        currentSong = data.song;
+        songMode = true;
+        progressionIndex = 0;
+        selectedChords = []; // Reset chord selection for new song
+        
+        // Update UI
+        document.getElementById('songSelect').value = data.songId;
+        document.getElementById('bpm').value = currentSong.bpm;
+        document.getElementById('timeSignature').value = currentSong.timeSignature;
+        document.getElementById('currentSongName').textContent = currentSong.name;
+        
+        // Show chord selection for new song
+        showChordSelection(currentSong.chords, currentSong.notes);
+        
+        // Hide progression display until ready
+        document.getElementById('progressionDisplay').classList.add('hidden');
+        
+        // Notify user
+        // ADD THIS CHECK:
+        if (data.autoAdvanced) {
+            showSongCompleteMessage(`Loading Next Song:<br>${currentSong.name}`);
+        } else {
+            showToast('Please select your chords!', 'info', `Now Playing: ${currentSong.name}`, 5000);
+        }
+    });
+	
+	// Auto-advance toggled
+    socket.on('auto_advance_toggled', (data) => {
+        console.log('Auto-advance toggled:', data.autoAdvance);
+        autoAdvanceEnabled = data.autoAdvance;
+        
+        // Update checkbox if it exists
+        const checkbox = document.getElementById('autoAdvanceCheckbox');
+        if (checkbox) {
+            checkbox.checked = data.autoAdvance;
+        }
+    });
+    
+    // Song end reached (no auto-advance or queue empty)
+    socket.on('song_end_reached', (data) => {
+        console.log('Song end reached:', data.message);
+        
+        // Show completion message
+        showSongCompleteMessage('Song Complete! 🎉');
+    });
+    
+    // User chords updated
+    socket.on('user_chords_updated', (data) => {
+        console.log('User chords updated:', data);
+        // Update UI if needed
+    });
+    
+    // Playback started (synchronized)
+    socket.on('playback_started', (data) => {
+        console.log('Playback started:', data);
+        
+        if (myRole === 'guest') {
+            // Guest receives synchronized playback command
+            const { songId, bpm, startTimestamp } = data;
+            
+            // Make sure the song is loaded and beat grid is ready
+            if (!currentSong || !songMode) {
+                console.error('Guest: Song not loaded properly');
+                return;
+            }
+            
+            // Ensure beat grid is displayed
+            const display = document.getElementById('progressionDisplay');
+            if (display.classList.contains('hidden')) {
+                displayProgression();
+            }
+            
+            // Calculate delay until start time
+            const now = Date.now();
+            const delay = startTimestamp - now;
+            
+            console.log(`Sync: Starting in ${delay}ms at timestamp ${startTimestamp}`);
+            
+            if (delay > 0) {
+                // Wait until the exact start time, then begin
+                setTimeout(() => {
+                    startCountInSynced(bpm);
+                }, delay);
+            } else {
+                // We're late, start immediately
+                console.warn('Late to the party, starting immediately');
+                startCountInSynced(bpm);
+            }
+        }
+    });
+    
+    // Playback stopped
+    socket.on('playback_stopped', (data) => {
+        console.log('Playback stopped');
+        
+        if (myRole === 'guest') {
+            stopMetronome();
+            alert('Host stopped playback');
+        }
+    });
+	
+	// Beat sync from host (for drift correction)
+    socket.on('beat_sync', (data) => {
+        if (myRole !== 'guest' || !isPlaying) return;
+        
+		// ADD THIS - Prevent correction spam
+        const nowDrift = Date.now();
+        const timeSinceLastCorrection = nowDrift - lastSyncTime;
+        
+        if (timeSinceLastCorrection < 2000) {
+            console.log('Skipping sync - too soon since last correction');
+            return;
+        }
+		
+        const { beat, bar, timestamp, bpm, serverTimestamp, progressionIndex: hostProgressionIndex } = data;
+        
+        console.log('=== SYNC HEARTBEAT RECEIVED ===');
+        console.log('Host at: Bar', bar, 'Beat', beat);
+        console.log('Host progressionIndex:', hostProgressionIndex);
+        
+        // Calculate expected position based on when sync was sent
+        const now = Date.now();
+        const networkLatency = now - timestamp;
+        const timeSinceSync = now - serverTimestamp;
+        
+        console.log('Network latency:', networkLatency, 'ms');
+        console.log('Time since sync:', timeSinceSync, 'ms');
+        
+        // Calculate where guest should be
+        const beatDuration = (60 / bpm) * 1000; // ms per beat
+        const beatsPerBar = parseInt(document.getElementById('timeSignature').value.split('/')[0]);
+        const division = parseInt(document.querySelector('input[name="division"]:checked').value);
+        const noteDuration = (60 / bpm) * (beatsPerBar / division);
+        
+        const expectedBeatsSinceSync = timeSinceSync / (noteDuration * 1000);
+        const hostTotalBeats = (bar * division) + ((beat - 1) * (division / beatsPerBar));
+		const expectedCurrentBeatIndex = hostProgressionIndex - 1; //sync is sent after host increments
+        //const expectedCurrentBeatIndex = Math.floor(hostTotalBeats + expectedBeatsSinceSync);
+        
+        console.log('Guest currentBeatIndex:', currentBeatIndex);
+        console.log('Expected currentBeatIndex:', expectedCurrentBeatIndex);
+        
+        // Calculate drift
+        const beatDrift = currentBeatIndex - expectedCurrentBeatIndex;
+        syncDriftMs = beatDrift * (noteDuration * 1000);
+        
+        console.log('Drift:', beatDrift, 'beats =', syncDriftMs.toFixed(2), 'ms');
+        
+        // Auto-correct based on drift magnitude
+        const GRADUAL_THRESHOLD_MS = 150;  // Use gradual correction
+        const HARD_RESYNC_THRESHOLD_MS = 500; // Force resync
+        
+        if (Math.abs(syncDriftMs) > HARD_RESYNC_THRESHOLD_MS) {
+            // Large drift - hard resync
+            console.log('⚠️ LARGE DRIFT - HARD RESYNC:', syncDriftMs.toFixed(2), 'ms');
+            
+            const wasPlaying = isPlaying;
+            
+            if (wasPlaying) {
+                isScheduling = false;
+                
+                setTimeout(() => {
+                    currentBeatIndex = expectedCurrentBeatIndex;
+                    console.log('Hard resynced to beat:', currentBeatIndex);
+                    
+                    nextBeatTime = Tone.now();
+                    isScheduling = true;
+                    scheduleMetronome();
+                    
+                    syncCorrectionCount++;
+                    showSyncIndicator('Resynced!');
+                }, 100);
+            }
+            
+        } else if (Math.abs(syncDriftMs) > GRADUAL_THRESHOLD_MS) {
+            // Medium drift - gradual correction
+            console.log('⚠️ DRIFT DETECTED - GRADUAL CORRECTION:', syncDriftMs.toFixed(2), 'ms');
+            
+            const correctionFactor = 0.5;
+            const correctionSeconds = (syncDriftMs / 1000) * correctionFactor;
+            
+            const now = Tone.now();
+            const timeUntilNextBeat = nextBeatTime - now;
+            
+            if (timeUntilNextBeat > 0.05) {
+                nextBeatTime -= correctionSeconds;
+                console.log('Gradual correction applied:', correctionSeconds.toFixed(3), 's');
+                
+                syncCorrectionCount++;
+                showSyncIndicator('Adjusting...');
+            } else {
+                console.log('Too close to next beat, skipping correction');
+            }
+            
+        } else {
+            console.log('✓ Sync good (drift:', syncDriftMs.toFixed(2), 'ms)');
+        }
+        
+        // Update progression index if significantly different
+        if (Math.abs(progressionIndex - hostProgressionIndex) > 2 && songMode) {
+            console.log('Updating progressionIndex from', progressionIndex, 'to', hostProgressionIndex);
+            progressionIndex = hostProgressionIndex;
+            
+            // Update beat grid
+            if (selectedChords.length > 0) {
+                updateBeatGridPersonalized();
+            } else {
+                updateBeatGrid();
+            }
+        }
+        
+        lastSyncTime = now;
+    });
+    
+    // Beat update (sync from host)
+    socket.on('beat_update', (data) => {
+        // Guests receive beat updates to stay in sync
+        // This will be used for tight synchronization
+    });
+    
+    // Room closed
+    socket.on('room_closed', (data) => {
+        showToast(data.message, 'warning', 'Room Closed', 6000);
+        leaveRoom();
+    });
+    
+    // Error from server
+    socket.on('error', (data) => {
+        console.error('Server error:', data);
+        alert('Error: ' + data.message);
+    });
+}
+
+// ============================================
+// ROOM MANAGEMENT FUNCTIONS
+// ============================================
+
+// Create a new room (Host)
+async function createRoom() {
+    try {
+		showLoading('Creating room...');
+        myUserId = generateUserId();
+        myRole = 'host';
+        
+        const response = await fetch(`${BACKEND_URL}/api/room/create`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ hostId: myUserId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            currentRoomId = data.roomId;
+            currentRoomPin = data.pin;
+            
+            console.log('Room created:', data);
+            
+            // Connect to backend and join room via WebSocket
+            connectToBackend();
+            
+            // Wait for socket to connect, then join room
+            setTimeout(() => {
+                socket.emit('join_room', {
+                    roomId: currentRoomId,
+                    userId: myUserId,
+                    role: 'host'
+                });
+				hideLoading(); // ADD THIS
+
+            }, 500);
+            
+        } else {
+            showToast(data.error || 'Unknown error', 'error', 'Failed to Create Room');
+        }
+        
+    } catch (error) {
+        console.error('Error creating room:', error);
+		hideLoading();
+		showToast('Failed to create room. Please try again.', 'error', 'Connection Error');
+    }
+}
+
+// Join an existing room (Guest)
+async function joinRoom(pin) {
+    try {
+		showLoading('Joining room...');
+        
+		myUserId = generateUserId();
+        myRole = 'guest';
+        
+        const response = await fetch(`${BACKEND_URL}/api/room/join`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                pin: pin,
+                userId: myUserId 
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            currentRoomId = data.roomId;
+            currentRoomPin = data.pin;
+            
+            console.log('Room found:', data);
+            
+            // Connect to backend and join room via WebSocket
+            connectToBackend();
+            
+            // Wait for socket to connect, then join room
+            setTimeout(() => {
+                socket.emit('join_room', {
+                    roomId: currentRoomId,
+                    userId: myUserId,
+                    role: 'guest'
+                });
+				hideLoading();
+            }, 500);
+            
+        } else {
+            showToast(data.error || 'Room not found', 'error', 'Failed to Join Room');
+        }
+        
+    } catch (error) {
+        console.error('Error joining room:', error);
+		hideLoading();
+		showToast('Failed to join room. Please check the PIN and try again.', 'error', 'Connection Error');
+    }
+}
+
+// Leave room
+function leaveRoom() {
+    if (socket && currentRoomId) {
+        socket.emit('leave_room');
+    }
+    
+    // Reset state
+    currentRoomId = null;
+    currentRoomPin = null;
+    myRole = null;
+    connectedUsers = [];
+    
+    // Disconnect socket
+    if (socket) {
+        socket.disconnect();
+        socket = null;
+    }
+    
+    // Reset UI
+    hideRoomInfo();
+    document.getElementById('roomControls').style.display = 'grid';
+}
+
+// Show room info UI
+function showRoomInfo() {
+    document.getElementById('roomControls').style.display = 'none';
+    document.getElementById('roomInfo').classList.remove('hidden');
+    document.getElementById('pinCode').textContent = currentRoomPin;
+    
+    const startBtn = document.getElementById('startBtn');
+    const songSelect = document.getElementById('songSelect');
+    const bpmInput = document.getElementById('bpm');
+    const timeSignatureSelect = document.getElementById('timeSignature');
+    const addToQueueControls = document.getElementById('addToQueueControls');
+    const nextSongBtn = document.getElementById('nextSongBtn');
+    
+    if (myRole === 'guest') {
+        // Disable controls for guests
+        startBtn.disabled = true;
+        startBtn.textContent = '⏳ Waiting for Host...';
+        startBtn.style.opacity = '0.6';
+        startBtn.style.cursor = 'not-allowed';
+        
+        songSelect.disabled = true;
+        bpmInput.disabled = true;
+        timeSignatureSelect.disabled = true;
+        
+        // Hide queue management for guests
+        addToQueueControls.style.display = 'none';
+        nextSongBtn.classList.add('hidden');
+        document.getElementById('autoAdvanceControls').style.display = 'none';
+
+        
+    } else {
+        // Enable controls for host
+        startBtn.disabled = false;
+        startBtn.textContent = '▶ START COUNT-IN';
+        startBtn.style.opacity = '1';
+        startBtn.style.cursor = 'pointer';
+        
+        songSelect.disabled = false;
+        bpmInput.disabled = false;
+        timeSignatureSelect.disabled = false;
+        
+        // Show queue management for host
+        addToQueueControls.style.display = 'grid';
+		document.getElementById('autoAdvanceControls').style.display = 'block';
+
+    }
+    
+    // Update current song display
+    if (currentSong) {
+        document.getElementById('currentSongName').textContent = currentSong.name;
+    }
+}
+
+// Hide room info UI
+function hideRoomInfo() {
+    document.getElementById('roomControls').style.display = 'grid';
+    document.getElementById('roomInfo').classList.add('hidden');
+    document.getElementById('userList').innerHTML = '';
+    document.getElementById('userCount').textContent = '0';
+    
+    // Re-enable all controls
+    const startBtn = document.getElementById('startBtn');
+    const songSelect = document.getElementById('songSelect');
+    const bpmInput = document.getElementById('bpm');
+    const timeSignatureSelect = document.getElementById('timeSignature');
+    
+    startBtn.disabled = false;
+    startBtn.textContent = '▶ START COUNT-IN';
+    startBtn.style.opacity = '1';
+    startBtn.style.cursor = 'pointer';
+    
+    songSelect.disabled = false;
+    bpmInput.disabled = false;
+    timeSignatureSelect.disabled = false;
+}
+
+// Update user list display
+function updateUserList(users) {
+    const userList = document.getElementById('userList');
+    const userCount = document.getElementById('userCount');
+    
+    userList.innerHTML = '';
+    userCount.textContent = users.length;
+    
+    users.forEach(user => {
+        const userItem = document.createElement('div');
+        userItem.className = 'user-item' + (user.role === 'host' ? ' host' : '');
+        
+        const chordsHtml = user.assignedChords.length > 0 
+            ? user.assignedChords.map(chord => 
+                `<span class="user-chord-tag">${chord}</span>`
+              ).join('')
+            : '<span style="opacity: 0.6; font-size: 12px;">No chords selected</span>';
+        
+        userItem.innerHTML = `
+            <div class="user-info">
+                <div class="user-name">
+                    ${user.name} ${user.role === 'host' ? '👑' : ''}
+                    ${user.userId === myUserId ? '(You)' : ''}
+                </div>
+                <div class="user-details">
+                    ${user.instrument} • ${chordsHtml}
+                </div>
+            </div>
+        `;
+        
+        userList.appendChild(userItem);
+    });
+}
+
+// Show notification
+function showNotification(message) {
+    // Simple alert for now, can be upgraded to toast notification
+    console.log('Notification:', message);
+}
+
+// Check and show cue
+function checkAndShowCue() {
+    if (!songMode || !currentSong) return;
+    
+    // Use flatProgression
+    const progression = currentSong.flatProgression || currentSong.progression;
+    
+    if (progressionIndex >= progression.length) return;
+    
+    const item = progression[progressionIndex];
+    
+    if (item.type === 'cue' || (typeof item === 'object' && item.cue)) {
+        progressionIndex++;
+        displayProgression();
+    }
+}
+
+function advanceProgression() {
+    //console.log('advanceProgression called - progressionIndex:', progressionIndex, 'songMode:', songMode, 'currentSong exists:', !!currentSong);
+    
+    if (!songMode || !currentSong) {
+        //console.log('Exiting advanceProgression - no song mode or no current song');
+        return;
+    }
+    
+    progressionIndex++;
+    
+    // Use flatProgression if available
+    const progression = currentSong.flatProgression || currentSong.progression;
+    
+    //console.log('Incremented progressionIndex to:', progressionIndex, 'Total progression length:', progression.length);
+    
+    if (progressionIndex >= progression.length) {
+        console.log('=== SONG COMPLETE (via chord progression) ===');
+        displayProgression();
+        
+        if (myRole === 'host' && socket && socket.connected && currentRoomId && isScheduling) {
+            console.log('HOST: Sending song_completed event (progression-based)');
+            socket.emit('song_completed');
+            isScheduling = false;
+        }
+        
+        return;
+    }
+    
+    //console.log('Song not complete yet, continuing...');
+    
+    checkAndShowCue();
+    
+    if (selectedChords.length > 0) {
+        updateBeatGridPersonalized();
+    } else {
+        updateBeatGrid();
+    }
+}
+
+// Check song chord
+function checkSongChord(playedValue) {
+    //console.log('checkSongChord called with:', playedValue, 'songMode:', songMode, 'progressionIndex:', progressionIndex);
+    
+    if (!songMode || !currentSong) {
+        //console.log('checkSongChord: not in song mode or no song');
+        return true;
+    }
+    
+    // Use flatProgression
+    const progression = currentSong.flatProgression || currentSong.progression;
+    
+    if (progressionIndex >= progression.length) {
+        //console.log('checkSongChord: progression already complete');
+        return false;
+    }
+    
+    const expectedItem = progression[progressionIndex];
+    
+    if (expectedItem.type === 'cue' || (typeof expectedItem === 'object' && expectedItem.cue)) {
+        //console.log('checkSongChord: current item is a cue, returning false');
+        return false;
+    }
+    
+    // Extract the type and value from playedValue (format: "chord:E" or "note:E3")
+    const [playedType, playedName] = playedValue.includes(':') 
+        ? playedValue.split(':') 
+        : ['chord', playedValue]; // Backward compatibility
+    
+    //console.log('Played type:', playedType, 'Played name:', playedName);
+    
+    // Check if what user played matches any item in this progression position
+    let isCorrect = false;
+    
+    // New format
+    if (expectedItem.type === playedType && expectedItem.value === playedName) {
+        isCorrect = true;
+    }
+    
+    // Old format backward compatibility
+    if (playedType === 'chord' && expectedItem.chord === playedName) {
+        isCorrect = true;
+    }
+    if (playedType === 'note' && expectedItem.note === playedName) {
+        isCorrect = true;
+    }
+    if (playedType === 'note' && expectedItem.melody === playedName) {
+        isCorrect = true;
+    }
+    
+    //console.log('Is correct:', isCorrect);
+    
+    // Always advance (even if wrong)
+    advanceProgression();
+    
+    return isCorrect;
+}
+
+function startSustain(chordName, itemDuration) {
+    const sustainMode = document.getElementById('sustainMode').checked;
+    if (!sustainMode) return;
+    
+    // Stop any previous sustained chord
+    if (sustainedChord) {
+        const notes = chordDefinitions[sustainedChord];
+        sustainSynth.triggerRelease(notes);
+        
+        // Clear any pending auto-release
+        if (sustainReleaseTimeout) {
+            clearTimeout(sustainReleaseTimeout);
+            sustainReleaseTimeout = null;
+        }
+    }
+    
+    sustainedChord = chordName;
+    let button = document.querySelector(`[data-chord="${chordName}"]`);
+    if (button) button.classList.add('playing');
+    
+    // Play with attack
+    const notes = chordDefinitions[chordName];
+    sustainSynth.triggerAttack(notes, Tone.now());
+    
+    // Auto-release after duration if specified
+    if (itemDuration && itemDuration > 0) {
+        const bpm = parseInt(document.getElementById('bpm').value);
+        const beatDuration = 60 / bpm;
+        const releaseDuration = itemDuration * beatDuration * 1000; // Convert to ms
+        
+        //console.log('Auto-release scheduled in', releaseDuration, 'ms');
+        
+        sustainReleaseTimeout = setTimeout(() => {
+            if (sustainedChord === chordName) {
+                stopSustain(chordName);
+            }
+        }, releaseDuration);
+    }
+}
+
+function stopSustain(chordName) {
+	const sustainMode = document.getElementById('sustainMode').checked;
+    if (!sustainMode) return;
+    
+    // Clear auto-release timeout
+    if (sustainReleaseTimeout) {
+        clearTimeout(sustainReleaseTimeout);
+        sustainReleaseTimeout = null;
+    }
+    
+    // Only release if this is the currently sustained chord
+    if (sustainedChord === chordName) {
+        let button = document.querySelector(`[data-chord="chord:${chordName}"]`);
+        if (button) {
+				button.classList.remove('playing');
+		}
+		else {
+			button = document.querySelector(`[data-chord="${chordName}"]`);
+			if (button) button.classList.remove('playing');
+		}
+        
+        // Release the notes
+        const notes = chordDefinitions[chordName];
+        sustainSynth.triggerRelease(notes, Tone.now());
+        
+        sustainedChord = null;
+    }
+}
+
+// Start count-in
+function startCountIn() {
+    isCountingIn = true;
+    waitingForFirstChord = false;
+    
+    const bpm = parseInt(document.getElementById('bpm').value);
+    const timeSignature = document.getElementById('timeSignature').value;
+    const beatsPerBar = parseInt(timeSignature.split('/')[0]);
+    const beatDuration = (60 / bpm) * 1000;
+    
+    let countBeat = 1;
+    
+    document.getElementById('startBtn').disabled = true;
+    document.getElementById('stopBtn').disabled = false;
+    
+    showCountIn(countBeat);
+    countBeat++;
+    
+    const countInterval = setInterval(() => {
+        if (countBeat <= beatsPerBar) {
+            showCountIn(countBeat);
+            countBeat++;
+        } else {
+            clearInterval(countInterval);
+            hideCountIn();
+            isCountingIn = false;
+            waitingForFirstChord = true;
+            
+            startMetronomeWaiting();
+            
+            if (songMode) {
+                checkAndShowCue();
+            }
+        }
+    }, beatDuration);
+}
+
+async function startCountInSynced(bpm) {
+    //console.log('Guest: Starting synchronized count-in');
+    
+    // Ensure Tone.js is ready
+    if (Tone.context.state !== 'running') {
+        console.log('Guest: Tone context not running, starting it');
+        await Tone.start();
+    }
+    //console.log('Guest: Tone context state:', Tone.context.state, 'Tone.now():', Tone.now());
+    
+    // Set all necessary flags
+    isCountingIn = true;
+    waitingForFirstChord = false;
+    isPlaying = true;
+    isScheduling = false; // Reset scheduling flag
+    
+    // Sync settings from host
+    document.getElementById('bpm').value = bpm;
+    const timeSignature = document.getElementById('timeSignature').value;
+    const beatsPerBar = parseInt(timeSignature.split('/')[0]);
+    const beatDuration = (60 / bpm) * 1000;
+    
+    // Make sure beat grid is visible and ready
+    createBeatGrid();
+    if (selectedChords.length > 0) {
+        updateBeatGridPersonalized();
+    } else {
+        updateBeatGrid();
+    }
+    
+    let countBeat = 1;
+    
+    document.getElementById('startBtn').disabled = true;
+    document.getElementById('stopBtn').disabled = false;
+    
+    showCountIn(countBeat);
+    countBeat++;
+    
+    const countInterval = setInterval(() => {
+        if (countBeat <= beatsPerBar) {
+            showCountIn(countBeat);
+            countBeat++;
+        } else {
+            clearInterval(countInterval);
+            hideCountIn();
+            isCountingIn = false;
+            
+            // CRITICAL: Ensure Tone.js is started and give it time to stabilize
+            Tone.start().then(() => {
+               // console.log('Guest: Tone.js started, Tone.now():', Tone.now());
+                
+                // Small delay to let Tone stabilize
+                setTimeout(() => {
+                    // Reset ALL timing variables
+                    currentBeatIndex = 0;
+                    beatsPlayedInBar = 0;
+                    chordStartBeatIndex = -1;
+                    currentChord = null;
+                    nextChord = null;
+                    
+                    // Initialize timing based on CURRENT Tone time
+                    const now = Tone.now();
+                    nextBeatTime = now;
+                    
+                    //console.log('Guest: Initializing - Tone.now():', now, 'nextBeatTime:', nextBeatTime, 'currentBeatIndex:', currentBeatIndex);
+                    
+                    // Start scheduling
+                    isScheduling = true;
+                    scheduleMetronome();
+                    
+                    if (songMode) {
+                        checkAndShowCue();
+                    }
+                }, 100); // 100ms delay for Tone to stabilize
+            });
+        }
+    }, beatDuration);
+}
+
+// Start metronome in waiting mode
+function startMetronomeWaiting() {
+    //console.log('startMetronome called - isScheduling will be set to true'); // ADD THIS
+
+    const bpm = parseInt(document.getElementById('bpm').value);
+    const timeSignature = document.getElementById('timeSignature').value;
+    const division = parseInt(document.querySelector('input[name="division"]:checked').value);
+    const beatsPerBar = parseInt(timeSignature.split('/')[0]);
+    
+    const beatDuration = 60 / bpm;
+    const noteDuration = (beatsPerBar / division) * beatDuration;
+    
+    currentBeatIndex = 0;
+    nextBeatTime = Tone.now();
+    
+    isScheduling = true;
+    //console.log('startMetronome - isScheduling now true, calling scheduleMetronome()'); // ADD THIS
+
+    scheduleMetronome();
+}
+
+function startMetronome() {
+    //console.log('startMetronome called - isScheduling will be set to true');
+    
+    const bpm = parseInt(document.getElementById('bpm').value);
+    const timeSignature = document.getElementById('timeSignature').value;
+    const division = parseInt(document.querySelector('input[name="division"]:checked').value);
+    const beatsPerBar = parseInt(timeSignature.split('/')[0]);
+    const beatDuration = 60 / bpm;
+    const noteDuration = (beatsPerBar / division) * beatDuration;
+    
+    currentBeatIndex = 0;
+    nextBeatTime = Tone.now(); // This should always use current Tone time
+    
+    //console.log('startMetronome - nextBeatTime set to:', nextBeatTime, 'Tone.now():', Tone.now());
+    
+    isScheduling = true;
+    //console.log('startMetronome - isScheduling now true, calling scheduleMetronome()');
+    scheduleMetronome();
+}
+
+// Precise scheduling function using Tone.js timing
+function scheduleMetronome() {
+    if (!isScheduling) {
+        //console.log('scheduleMetronome called but isScheduling is false, returning');
+        return;
+    }
+    
+    // ADD THIS CHECK
+    if (currentBeatIndex === 0 && nextBeatTime > Tone.now() + 1.0) {
+        //console.log('FIXING: nextBeatTime is too far in future, resetting to now');
+        nextBeatTime = Tone.now();
+    }
+    
+    //console.log('scheduleMetronome running - currentBeatIndex:', currentBeatIndex, 'isPlaying:', isPlaying);
+	
+    const bpm = parseInt(document.getElementById('bpm').value);
+    const timeSignature = document.getElementById('timeSignature').value;
+    const division = parseInt(document.querySelector('input[name="division"]:checked').value);
+    const beatsPerBar = parseInt(timeSignature.split('/')[0]);
+    const beatDuration = 60 / bpm;
+    const noteDuration = (beatsPerBar / division) * beatDuration;
+    const quarterNoteDuration = 60 / bpm;
+    const repeatMode = document.getElementById('repeatMode').checked;
+    
+    const now = Tone.now();
+    const lookAhead = 0.1;
+    //added this line
+	//console.log('NextBeatTime: ', nextBeatTime, ' Now: ', now, 'Look Ahead: ', lookAhead);
+	
+    while (nextBeatTime < now + lookAhead) {
+        const beatIndex = currentBeatIndex;
+        const beatTime = nextBeatTime;
+        
+        // Calculate which beat within the bar for the checkbox highlighting
+        const beatInBar = currentBeatIndex % division;
+        
+        const visualOffset = 0.05;
+        Tone.Draw.schedule(() => {
+            //console.log('Visual update - beatInBar:', beatInBar, 'beatIndex:', beatIndex); // ADD THIS
+
+            updateMetronome(beatInBar);  // Use beatInBar for checkbox highlighting
+            
+            // Highlight beat in grid using absolute position
+            //console.log('Calling highlightBeatInGrid with:', beatIndex); // ADD THIS
+	
+            highlightBeatInGrid(beatIndex);
+            
+            const currentQuarterBeat = Math.floor((beatIndex * noteDuration) / quarterNoteDuration);
+            const prevQuarterBeat = beatIndex === 0 ? -1 : Math.floor(((beatIndex - 1) * noteDuration) / quarterNoteDuration);
+            
+            if (cueCountdown > 0 && currentQuarterBeat !== prevQuarterBeat) {
+                updateCueCountdown();
+            }
+        }, beatTime - visualOffset);
+        
+        const checkboxes = document.querySelectorAll('.checkboxes-grid input[type="checkbox"]');
+		const shouldPlay = currentChord && checkboxes[beatInBar] && checkboxes[beatInBar].checked;
+		const immediateMode = document.getElementById('immediateMode').checked;
+
+		// Only play from metronome if NOT in immediate mode
+		if (shouldPlay && !immediateMode) {
+			if (repeatMode || beatsPlayedInBar < division) {
+				const notes = chordDefinitions[currentChord];
+				const playDuration = noteDuration * 0.9;
+				synth.triggerAttackRelease(notes, playDuration, beatTime);
+			}
+		}
+
+		nextBeatTime += noteDuration;
+		currentBeatIndex++;
+        //console.log('Incremented currentBeatIndex to:', currentBeatIndex, 'nextBeatTime:', nextBeatTime); // ADD THIS
+		// ADD THIS BLOCK - Host sends sync heartbeat every 4 bars
+        if (myRole === 'host' && socket && socket.connected && currentRoomId) {
+            const beatsPerBar = parseInt(document.getElementById('timeSignature').value.split('/')[0]);
+            const division = parseInt(document.querySelector('input[name="division"]:checked').value);
+            
+            // Calculate current bar and beat within bar
+            const totalQuarterBeats = Math.floor((currentBeatIndex * noteDuration) / (60 / bpm));
+            const currentBar = Math.floor(totalQuarterBeats / beatsPerBar);
+            const currentBeat = (totalQuarterBeats % beatsPerBar) + 1;
+            
+            // Send heartbeat every 4 bars (on bar 0, 4, 8, 12, etc.)
+            if (currentBar % 4 === 0 && currentBeat === 1) {
+                const syncData = {
+                    beat: currentBeat,
+                    bar: currentBar,
+                    timestamp: Date.now(),
+                    bpm: bpm,
+                    progressionIndex: currentBeatIndex
+                };
+                
+                socket.emit('beat_update', syncData);
+                console.log('Host sent sync heartbeat:', syncData);
+            }
+        }
+		
+		// ADD THIS BLOCK - Check if we've reached the end of the song
+        if (songMode && currentSong) {
+            const totalBeats = getTotalBeatsToDisplay();
+            console.log('Beat check - currentBeatIndex:', currentBeatIndex, 'totalBeats:', totalBeats, 'Time: ', Date.now());
+            
+            // Check if we've reached the last beat of the song
+            if (currentBeatIndex >= totalBeats - 1) {
+                console.log('=== REACHED END OF SONG (by beat position) ===');
+                
+                // Send completion event (only once)
+                if (myRole === 'host' && socket && socket.connected && currentRoomId) {
+                    console.log('HOST: Sending song_completed event (beat-based)');
+                    socket.emit('song_completed');
+                    
+                    // Prevent sending multiple times by stopping scheduling
+                    isScheduling = false;
+                    console.log('Stopped scheduling to prevent duplicate events');
+                }
+            }
+        }
+
+		if (currentChord && !immediateMode) {
+			beatsPlayedInBar++;
+		}
+        
+        // Check if we've completed a bar
+		// Check if we've completed a bar
+		if (beatInBar === division - 1) {
+			// In song mode with immediate response, don't auto-clear the chord
+			const immediateMode = document.getElementById('immediateMode').checked;
+			
+			// Clear chord after one bar in immediate mode without repeat
+			if (immediateMode && !repeatMode && currentChord) {
+				const barsPlayed = Math.floor(beatsPlayedInBar / division);
+				if (barsPlayed >= 1) {
+					Tone.Draw.schedule(() => {
+						currentChord = null;
+						//updateChordDisplay(null);
+						beatsPlayedInBar = 0;
+					}, beatTime);
+				}
+			}
+			
+			if (!repeatMode && !songMode && !immediateMode && beatsPlayedInBar >= division) {
+				Tone.Draw.schedule(() => {
+					currentChord = null;
+					//updateChordDisplay(null);
+				}, beatTime);
+			}
+			
+			// Only switch to nextChord if it was explicitly set (not in song mode with immediate)
+			if (nextChord && !immediateMode) {
+				currentChord = nextChord;
+				nextChord = null;
+				beatsPlayedInBar = 0;
+				Tone.Draw.schedule(() => {
+					//updateChordDisplay(currentChord);
+				}, beatTime);
+			}
+		}
+    }
+    
+    requestAnimationFrame(scheduleMetronome);
+}
+
+// Find stopMetronome() and add these lines at the beginning:
+function stopMetronome() {
+    isScheduling = false;
+	
+    // ADD THESE LINES - Reset sync state
+    lastSyncTime = 0;
+    syncDriftMs = 0;
+    syncCorrectionCount = 0;
+	
+    document.getElementById('beatGridContainer').scrollLeft = 0;
+    chordStartBeatIndex = -1
+    
+	// ADD THESE TWO NEW LINES:
+    // Reset chord selection if in selection mode
+    if (isChordSelectionMode) {
+        document.getElementById('chordSelectionSection').style.display = 'none';
+        selectedChords = [];
+        isChordSelectionMode = false;
+    }
+	
+    if (metronomeInterval) {
+        clearInterval(metronomeInterval);
+        metronomeInterval = null;
+    }
+    updateMetronome(-1);
+    hideCountIn();
+    hideSongCue();
+    isPlaying = false;
+    isCountingIn = false;
+    waitingForFirstChord = false;
+    currentChord = null;
+    nextChord = null;
+    //updateChordDisplay(null);
+    document.getElementById('stopBtn').disabled = true;
+    document.getElementById('startBtn').disabled = false;
+    
+    if (songMode && currentSong) {
+        progressionIndex = 0;
+        displayProgression();
+    }
+}
+
+// Handle chord click
+async function handleChordClick(chordName) {
+    await Tone.start();
+	
+    // Extract actual value from selection key (format: "chord:G#" or "note:D#4")
+    let actualValue;
+    if (chordName && chordName.includes(':')) {
+        // New format: "type:value"
+        const [type, value] = chordName.split(':');
+        actualValue = value;
+    } else {
+        // Old format or direct value
+        actualValue = chordName || chordName;
+    }
+    
+    console.log('handleChordClick - selection:', chordName, 'actualValue:', actualValue);
+	
+    // ADD THIS CHECK:
+    if (!chordDefinitions[actualValue]) {
+        console.error('Note/chord not found in chordDefinitions:', actualValue);
+        console.log('Available definitions:', Object.keys(chordDefinitions));
+        return;
+    }
+    
+    const sustainMode = document.getElementById('sustainMode').checked;
+    const immediateMode = document.getElementById('immediateMode').checked;
+    
+    // In sustain mode, handle the sound separately
+    if (sustainMode) {
+        // Get duration if available
+        let itemDuration = 0;
+        if (songMode && currentSong) {
+            const progression = currentSong.flatProgression || currentSong.progression;
+            if (progressionIndex < progression.length) {
+                const currentItem = progression[progressionIndex];
+                itemDuration = currentItem.duration || 0;
+            }
+        }
+        
+        startSustain(actualValue, itemDuration);
+        //updateChordDisplay(actualValue);
+        
+        // If metronome isn't running yet, start it (for visual beat guidance)
+        if (!isPlaying && !isCountingIn) {
+            currentChord = actualValue;
+            beatsPlayedInBar = 0;
+            chordStartBeatIndex = 0;
+            isPlaying = true;
+            startMetronome();
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('startBtn').disabled = true;
+        }
+        
+        return; // Don't continue to the immediate/normal playback logic
+    }
+    
+    if (songMode) {
+        const isCorrect = checkSongChord(actualValue);
+        
+        if (!isCorrect && currentSong) {
+            let button = document.querySelector(`[data-chord="chord:${chordName}"]`);
+            if(button) {
+				button.classList.add('wrong-chord-flash');
+			}
+			else {
+				button = document.querySelector(`[data-chord="${chordName}"]`);
+				if(button) button.classList.add('wrong-chord-flash');
+			}
+			
+            setTimeout(() => button.classList.remove('wrong-chord-flash'), 500);
+        }
+    }
+    
+    if (immediateMode && isPlaying) {
+		console.log('Immediate mode and isPlaying logic..');
+        // Update the chord and play it immediately
+        currentChord = actualValue;
+        //updateChordDisplay(actualValue);
+        
+        // Track when this chord was clicked (absolute beat position)
+        chordStartBeatIndex = currentBeatIndex;
+        
+        const bpm = parseInt(document.getElementById('bpm').value);
+        const timeSignature = document.getElementById('timeSignature').value;
+        const division = parseInt(document.querySelector('input[name="division"]:checked').value);
+        const beatsPerBar = parseInt(timeSignature.split('/')[0]);
+        const beatDuration = 60 / bpm;
+        const playDuration = (beatsPerBar / division) * beatDuration * 0.9;
+        
+        // Play immediately when clicked
+        const notes = chordDefinitions[actualValue];
+        synth.triggerAttackRelease(notes, playDuration, Tone.now());
+        
+        let button = document.querySelector(`[data-chord="chord:${chordName}"]`);
+		if(button) {
+			button.classList.add('playing');
+		}
+		else {
+			button = document.querySelector(`[data-chord="${chordName}"]`);
+			if(button) button.classList.add('playing');
+		}
+        setTimeout(() => button.classList.remove('playing'), 200);
+        
+        return;
+    }
+    
+    if (waitingForFirstChord) {
+        console.log('=== WAITING FOR FIRST CHORD (after count-in) ===');
+        console.log('chordName:', actualValue, 'immediateMode:', immediateMode);
+        
+        waitingForFirstChord = false;
+        
+        if (!immediateMode) {
+            nextChord = actualValue;
+            console.log('Standard mode: queued for next bar');
+        } else {
+            currentChord = actualValue;
+            //updateChordDisplay(actualValue);
+            chordStartBeatIndex = currentBeatIndex;
+            
+            // PLAY THE CHORD IMMEDIATELY
+            const bpm = parseInt(document.getElementById('bpm').value);
+            const timeSignature = document.getElementById('timeSignature').value;
+            const division = parseInt(document.querySelector('input[name="division"]:checked').value);
+            const beatsPerBar = parseInt(timeSignature.split('/')[0]);
+            const beatDuration = 60 / bpm;
+            const playDuration = (beatsPerBar / division) * beatDuration * 0.9;
+            
+            console.log('Playing first chord immediately - BPM:', bpm, 'duration:', playDuration);
+            
+            const notes = chordDefinitions[actualValue];
+            synth.triggerAttackRelease(notes, playDuration, Tone.now());
+            
+            let button = document.querySelector(`[data-chord="chord:${chordName}"]`);
+            if(button) {
+				button.classList.add('playing');
+			}
+			else {
+				button = document.querySelector(`[data-chord="${chordName}"]`);
+				if(button) button.classList.add('playing');
+			}
+			
+            setTimeout(() => button.classList.remove('playing'), 200);
+            
+            console.log('First chord played');
+        }
+        
+        beatsPlayedInBar = 0;
+        isPlaying = true;
+        console.log('=== END WAITING FOR FIRST CHORD ===');
+		} 
+		else if (!isPlaying && !isCountingIn) {
+        console.log('=== FIRST CHORD CLICK ===');
+        console.log('isPlaying:', isPlaying, 'isCountingIn:', isCountingIn);
+        console.log('immediateMode:', immediateMode, 'sustainMode:', sustainMode);
+        console.log('chordName:', actualValue);
+        
+        currentChord = actualValue;
+        //updateChordDisplay(actualValue);
+        beatsPlayedInBar = 0;
+        chordStartBeatIndex = 0;
+        isPlaying = true;
+        
+        console.log('About to start Tone.js...');
+        
+        // Ensure Tone.js is started
+        Tone.start().then(() => {
+            console.log('Tone.js started successfully');
+            console.log('Tone.context.state:', Tone.context.state);
+            console.log('Tone.now():', Tone.now());
+            
+            startMetronome();
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('startBtn').disabled = true;
+            
+            console.log('Metronome started, now checking if should play sound...');
+            console.log('immediateMode check:', immediateMode);
+            
+            // Play the first chord immediately if in immediate mode
+            if (immediateMode) {
+				const bpm = parseInt(document.getElementById('bpm').value);
+				const timeSignature = document.getElementById('timeSignature').value;
+				const division = parseInt(document.querySelector('input[name="division"]:checked').value);
+				const beatsPerBar = parseInt(timeSignature.split('/')[0]);
+				const beatDuration = 60 / bpm;
+				
+				// Check if current progression item has duration specified
+				let playDuration = (beatsPerBar / division) * beatDuration * 0.9; // Default
+				
+				if (songMode && currentSong) {
+					const progression = currentSong.flatProgression || currentSong.progression;
+					if (progressionIndex < progression.length) {
+						const currentItem = progression[progressionIndex];
+						if (currentItem.duration !== undefined && currentItem.duration > 0) {
+							// Use specified duration (in beats)
+							playDuration = currentItem.duration * beatDuration;
+							console.log('Using specified duration:', currentItem.duration, 'beats =', playDuration, 'seconds');
+						}
+					}
+				}
+				
+				const notes = chordDefinitions[actualValue];
+				synth.triggerAttackRelease(notes, playDuration, Tone.now());
+                console.log('triggerAttackRelease called');
+                
+                let button = document.querySelector(`[data-chord="chord:${chordName}"]`);
+                if(button) {
+					button.classList.add('playing');
+				}
+				else {
+					button = document.querySelector(`[data-chord="${chordName}"]`);
+					if(button) button.classList.add('playing');
+				}
+                setTimeout(() => button.classList.remove('playing'), 200);
+                
+                console.log('First chord play complete');
+            } else {
+                console.log('NOT immediate mode, sound will play on next bar');
+            }
+        }).catch(error => {
+            console.error('Error starting Tone.js:', error);
+        });
+        
+        console.log('=== END FIRST CHORD CLICK ===');
+    } else if (isPlaying && !immediateMode) {
+		console.log('Is playing and not immediate mode logic..');
+        nextChord = actualValue;
+    }
+}
+
+// Fetch songs from backend and populate dropdowns
+async function fetchSongsFromBackend() {
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/songs`);
+        const data = await response.json();
+        
+        if (data.success && data.songs) {
+            availableSongs = data.songs;
+            populateSongDropdowns(availableSongs);
+            console.log('Songs fetched from backend:', availableSongs);
+        }
+    } catch (error) {
+        console.error('Error fetching songs from backend:', error);
+        // Fallback to hardcoded songs if backend is unavailable
+        console.log('Using hardcoded songs as fallback');
+    }
+}
+
+// Populate both song dropdowns with fetched songs
+function populateSongDropdowns(songs) {
+    const songSelect = document.getElementById('songSelect');
+    const queueSongSelect = document.getElementById('queueSongSelect');
+    
+    // Clear existing options (keep the first placeholder option)
+    songSelect.innerHTML = '<option value="">-- Select a Song --</option>';
+    queueSongSelect.innerHTML = '<option value="">-- Add Song to Queue --</option>';
+    
+    // Add songs to dropdowns
+    songs.forEach(song => {
+        const option1 = document.createElement('option');
+        option1.value = song.id;
+        option1.textContent = song.name;
+        songSelect.appendChild(option1);
+        
+        const option2 = document.createElement('option');
+        option2.value = song.id;
+        option2.textContent = song.name;
+        queueSongSelect.appendChild(option2);
+    });
+}
+
+// Fetch songs on page load
+fetchSongsFromBackend();
+
+// Event listeners
+document.getElementById('songSelect').addEventListener('change', (e) => {
+    loadSong(e.target.value);
+});
+
+document.getElementById('instrument').addEventListener('change', (e) => {
+    const instrument = e.target.value;
+    initSynth(instrument);
+    
+    // If in a multi-user room, notify backend of instrument change
+    if (socket && socket.connected && currentRoomId && myUserId) {
+        socket.emit('update_instrument', {
+            userId: myUserId,
+            instrument: instrument
+        });
+        console.log('Sent instrument change to backend:', instrument);
+    }
+});
+
+document.querySelectorAll('input[name="division"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+        updateCheckboxes();
+        if (isPlaying) {
+            startMetronome();
+        }
+    });
+});
+
+document.getElementById('bpm').addEventListener('change', () => {
+    if (isPlaying) {
+        startMetronome();
+    }
+});
+
+document.getElementById('timeSignature').addEventListener('change', () => {
+    if (isPlaying) {
+        startMetronome();
+    }
+});
+
+document.querySelectorAll('.chord-btn').forEach(btn => {
+    btn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        handleChordClick(btn.dataset.chord);
+    });
+    
+    btn.addEventListener('mouseup', (e) => {
+        e.preventDefault();
+        stopSustain(btn.dataset.chord);
+    });
+    
+    btn.addEventListener('mouseleave', (e) => {
+        stopSustain(btn.dataset.chord);
+    });
+    
+    btn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        handleChordClick(btn.dataset.chord);
+    });
+    
+    btn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        stopSustain(btn.dataset.chord);
+    });
+    
+    btn.addEventListener('touchcancel', (e) => {
+        e.preventDefault();
+        stopSustain(btn.dataset.chord);
+    });
+});
+
+document.getElementById('startBtn').addEventListener('click', async () => {
+    await Tone.start();
+    
+    // If host in a room, broadcast synchronized start
+    if (myRole === 'host' && socket && socket.connected && currentRoomId) {
+        const bpm = parseInt(document.getElementById('bpm').value);
+        const songId = document.getElementById('songSelect').value;
+        
+        // Calculate start time: 2 seconds from now for network buffer
+        const startTimestamp = Date.now() + 2000;
+        
+        console.log('Host broadcasting playback start at timestamp:', startTimestamp);
+        
+        // Broadcast to all guests
+        socket.emit('start_playback', {
+            songId: songId,
+            bpm: bpm,
+            startTimestamp: startTimestamp
+        });
+        
+        // Host also waits for the same timestamp
+        setTimeout(() => {
+            startCountIn();
+        }, 2000);
+        
+    } else {
+        // Single player or guest mode
+        startCountIn();
+    }
+});
+
+document.getElementById('stopBtn').addEventListener('click', () => {
+    // If host in a room, broadcast stop to all
+    if (myRole === 'host' && socket && socket.connected && currentRoomId) {
+        socket.emit('stop_playback');
+        console.log('Host broadcasting playback stop');
+    }
+    
+    stopMetronome();
+});
+
+document.getElementById('readyBtn').addEventListener('click', () => {
+    confirmChordSelection();
+    displayProgression();
+});
+
+// ============================================
+// MULTI-USER UI EVENT LISTENERS
+// ============================================
+
+// Create Room button
+document.getElementById('createRoomBtn').addEventListener('click', () => {
+    createRoom();
+});
+
+// Join Room button
+document.getElementById('joinRoomBtn').addEventListener('click', () => {
+    // Show modal
+    document.getElementById('joinRoomModal').classList.remove('hidden');
+    document.getElementById('joinPinInput').value = '';
+    document.getElementById('joinPinInput').focus();
+});
+
+// Cancel join button
+document.getElementById('cancelJoinBtn').addEventListener('click', () => {
+    document.getElementById('joinRoomModal').classList.add('hidden');
+});
+
+// Confirm join button
+document.getElementById('confirmJoinBtn').addEventListener('click', () => {
+    const pin = document.getElementById('joinPinInput').value.trim();
+    
+    if (pin.length !== 6) {
+        alert('Please enter a valid 6-digit PIN');
+        return;
+    }
+    
+    document.getElementById('joinRoomModal').classList.add('hidden');
+    joinRoom(pin);
+});
+
+// Allow Enter key in PIN input
+document.getElementById('joinPinInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        document.getElementById('confirmJoinBtn').click();
+    }
+});
+
+// Copy PIN button
+document.getElementById('copyPinBtn').addEventListener('click', () => {
+    const pin = document.getElementById('pinCode').textContent;
+    
+    navigator.clipboard.writeText(pin).then(() => {
+        const btn = document.getElementById('copyPinBtn');
+        const originalText = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        setTimeout(() => {
+            btn.textContent = originalText;
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        alert('PIN: ' + pin);
+    });
+});
+
+// Add to Queue button
+document.getElementById('addToQueueBtn').addEventListener('click', () => {
+    addToQueue();
+});
+
+// Next Song button
+document.getElementById('nextSongBtn').addEventListener('click', () => {
+    skipToNextSong();
+});
+
+// Queue song select - enable/disable add button
+document.getElementById('queueSongSelect').addEventListener('change', (e) => {
+    const addBtn = document.getElementById('addToQueueBtn');
+    addBtn.disabled = !e.target.value;
+});
+
+// Leave Room button
+document.getElementById('leaveRoomBtn').addEventListener('click', () => {
+    if (confirm('Are you sure you want to leave the room?')) {
+        leaveRoom();
+    }
+});
+// Auto-advance checkbox toggle
+document.getElementById('autoAdvanceCheckbox').addEventListener('change', (e) => {
+    const enabled = e.target.checked;
+    autoAdvanceEnabled = enabled;
+    
+    if (socket && socket.connected && currentRoomId && myRole === 'host') {
+        socket.emit('toggle_auto_advance', { enabled });
+        console.log('Host toggled auto-advance:', enabled);
+    }
+});
+
+// Initialize
+initSynth('guitar');
+updateCheckboxes();
+
+// Fetch songs from backend on page load
+fetchSongsFromBackend();
+
+createBeatGrid();
+    </script>
+
+<!-- Loading Spinner -->
+    <div class="loading-overlay hidden" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loadingText">Loading...</div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+<!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <script>
+
+</body>
+</html>
